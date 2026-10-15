@@ -13,6 +13,7 @@ from typing import Any
 import re
 import shutil
 import subprocess
+import tempfile
 from xml.sax.saxutils import escape
 
 from django.conf import settings
@@ -472,8 +473,12 @@ def convert_word_reports_to_pdf(reports_dir: Path) -> None:
     """Convert reports with the converter available on the current server."""
     libreoffice = shutil.which("libreoffice") or shutil.which("soffice")
     if libreoffice:
+        # A separate writable profile prevents simultaneous Render jobs from
+        # locking each other out of LibreOffice.
+        profile_dir = Path(tempfile.mkdtemp(prefix="mlcis-libreoffice-"))
         command = [
             libreoffice,
+            f"-env:UserInstallation=file://{profile_dir.as_posix()}",
             "--headless",
             "--convert-to", "pdf:writer_pdf_Export",
             "--outdir", str(reports_dir),
@@ -486,7 +491,11 @@ def convert_word_reports_to_pdf(reports_dir: Path) -> None:
         raise ProcessingError(
             "PDF conversion is unavailable on this server. Student report cards are provided as a DOCX ZIP instead."
         )
-    completed = subprocess.run(command, capture_output=True, text=True, timeout=180)
+    try:
+        completed = subprocess.run(command, capture_output=True, text=True, timeout=180)
+    finally:
+        if libreoffice:
+            shutil.rmtree(profile_dir, ignore_errors=True)
     expected = list(reports_dir.glob("*.docx"))
     if completed.returncode != 0 or any(not document.with_suffix(".pdf").exists() for document in expected):
         detail = (completed.stderr or completed.stdout or "Microsoft Word could not export the PDF.").strip()
