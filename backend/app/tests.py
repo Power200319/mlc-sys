@@ -19,6 +19,7 @@ from .services import (
 
 
 class BatchImportTests(SimpleTestCase):
+    @override_settings(SECURE_SSL_REDIRECT=False)
     def test_process_endpoint_accepts_multiple_upload_requests_without_csrf(self):
         client = Client(enforce_csrf_checks=True)
         response = client.post("/api/process/")

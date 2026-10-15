@@ -37,12 +37,11 @@ Khmer Dictation, Khmer Essays, Khmer Reading, Khmer Public Speaking, Khmer Math,
 
 ## Template location
 
-The default scoring-format reference is:
-
-- `D:\New folder\Telegram Desktop\G4-G6 Scoring System Final 2024-2025-MLCIS -6A.xlsm`
-
-Set `MLCIS_SCORING_TEMPLATE` if you need another approved format file.
-Set `MLCIS_REPORT_TEMPLATE` to change the report-card Word template.
+The approved Grade 6 scoring and report templates are included in
+`backend/templates/grade6`. This makes the app work both locally and after a
+network deployment; it does not depend on `D:\New folder` existing on the
+server. Set `MLCIS_SCORING_TEMPLATE` or `MLCIS_REPORT_TEMPLATE` only when you
+intentionally need another approved format.
 
 Each download begins as a clean format: it removes the sample values from all
 Q1–Q4 and Comment Q1–Q4 sheets, then writes data only in the Quarter selected
@@ -68,3 +67,18 @@ npm run dev
 ```
 
 Open the Vite address shown in the terminal, normally `http://localhost:5173`. The frontend sends `/api` requests to Django at `http://127.0.0.1:8000`.
+
+## Local network use
+
+For another device on the same network, start Django with a reachable address,
+for example `python manage.py runserver 0.0.0.0:8000`. Set the backend
+environment values to include the server IP and the frontend origin:
+
+```powershell
+$env:ALLOWED_HOSTS="192.168.1.10,localhost,127.0.0.1"
+$env:CORS_ALLOWED_ORIGINS="http://192.168.1.10:5173,http://localhost:5173"
+```
+
+In `frontend/.env.local`, set `VITE_API_BASE_URL=http://192.168.1.10:8000`,
+then restart Vite. Do not use `localhost` on a second device: there it refers
+to that device, not to the computer hosting Django.

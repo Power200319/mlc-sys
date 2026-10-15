@@ -26,7 +26,15 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-change-in-pro
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+    if host.strip()
+]
+# Render provides its public host separately.  Include it without requiring a
+# machine-specific value in the source code.
+if os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
+    ALLOWED_HOSTS.append(os.environ['RENDER_EXTERNAL_HOSTNAME'])
 
 
 # Application definition
@@ -58,11 +66,12 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'backend.urls'
 
 CORS_ALLOWED_ORIGINS = [
-    "https://mlc-sys.vercel.app",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
+    origin.strip()
+    for origin in os.environ.get(
+        'CORS_ALLOWED_ORIGINS',
+        'https://mlc-sys.vercel.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174',
+    ).split(',')
+    if origin.strip()
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -162,10 +171,15 @@ if not DEBUG:
 
 # Processing uses temporary, file-based job storage. No student data is stored
 # in the database.
-MLCIS_TEMPLATE_DIR = os.environ.get("MLCIS_TEMPLATE_DIR", r"D:\New folder\Telegram Desktop")
+# Approved templates travel with the application. This avoids depending on a
+# developer's D: drive when the same backend runs locally or on the network.
+# Deployments may still override any path with an environment variable.
+MLCIS_TEMPLATE_DIR = Path(
+    os.environ.get("MLCIS_TEMPLATE_DIR", BASE_DIR / "templates" / "grade6")
+)
 MLCIS_SCORING_TEMPLATE = os.environ.get(
     "MLCIS_SCORING_TEMPLATE",
-    r"D:\New folder\Telegram Desktop\G4-G6 Scoring System Final 2024-2025-MLCIS -6A.xlsm",
+    str(MLCIS_TEMPLATE_DIR / "G4-G6 Scoring System Final 2024-2025-MLCIS -6A.xlsm"),
 )
 # Each school reporting stage has its own approved layout.  The quarter layout
 # is a .docx and can be safely populated by the current merge-field service.
@@ -174,15 +188,15 @@ MLCIS_SCORING_TEMPLATE = os.environ.get(
 # conversion plus an independent field map before they are populated.
 MLCIS_QUARTER_REPORT_TEMPLATE = os.environ.get(
     "MLCIS_QUARTER_REPORT_TEMPLATE",
-    r"D:\New folder\Telegram Desktop\1- F- Quarter Report Card Grade G4-6 - MLCIS (3).docx",
+    str(MLCIS_TEMPLATE_DIR / "1- F- Quarter Report Card Grade G4-6 - MLCIS (3).docx"),
 )
 MLCIS_SEMESTER_REPORT_TEMPLATE = os.environ.get(
     "MLCIS_SEMESTER_REPORT_TEMPLATE",
-    r"D:\New folder\Telegram Desktop\2- F- SEM1 and Q2 Report Card G4-6.doc",
+    str(MLCIS_TEMPLATE_DIR / "2- F- SEM1 and Q2 Report Card G4-6.doc"),
 )
 MLCIS_END_YEAR_REPORT_TEMPLATE = os.environ.get(
     "MLCIS_END_YEAR_REPORT_TEMPLATE",
-    r"D:\New folder\Telegram Desktop\4- F- End of Year Report Card G4-6.doc",
+    str(MLCIS_TEMPLATE_DIR / "4- F- End of Year Report Card G4-6.doc"),
 )
 # Kept as a compatibility alias for deployments that already set this name.
 MLCIS_REPORT_TEMPLATE = os.environ.get("MLCIS_REPORT_TEMPLATE", MLCIS_QUARTER_REPORT_TEMPLATE)

@@ -9,6 +9,9 @@ export interface ResultSectionProps {
 export const ResultSection = ({ result }: ResultSectionProps) => {
   const scoringOutput = result.outputs.scoring
   const reportOutput = result.outputs.report_cards
+  const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+  const downloadUrl = (path: string) =>
+    /^https?:\/\//i.test(path) ? path : `${apiBase}${path}`
 
   return (
     <section className="result-section" aria-live="polite">
@@ -47,7 +50,7 @@ export const ResultSection = ({ result }: ResultSectionProps) => {
         <CardBody className="result-downloads">
           {scoringOutput.available && scoringOutput.download && (
             <a
-              href={scoringOutput.download}
+              href={downloadUrl(scoringOutput.download)}
               className="btn btn-secondary btn-lg download-btn"
               download
             >
@@ -66,7 +69,7 @@ export const ResultSection = ({ result }: ResultSectionProps) => {
 
           {reportOutput.available && reportOutput.download && (
             <a
-              href={reportOutput.download}
+              href={downloadUrl(reportOutput.download)}
               className="btn btn-primary btn-lg download-btn"
               download
             >
