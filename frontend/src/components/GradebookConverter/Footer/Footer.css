@@ -1,0 +1,20 @@
+.app-footer {
+  background: var(--color-bg-elevated);
+  border-top: 1px solid var(--color-border);
+  padding: 24px;
+  text-align: center;
+  margin-top: auto;
+}
+
+.app-footer p {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.footer-note {
+  font-size: 0.75rem !important;
+  color: var(--color-text-muted) !important;
+  font-weight: 400 !important;
+}
