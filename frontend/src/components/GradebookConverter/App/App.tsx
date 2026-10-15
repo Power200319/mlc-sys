@@ -57,7 +57,8 @@ const App = () => {
 
     try {
       updateProgress('Uploading & validating…', 30)
-      const response = await fetch('/api/process/', { method: 'POST', body: data })
+      const apiBase = import.meta.env.VITE_API_BASE_URL || ''
+      const response = await fetch(`${apiBase}/api/process/`, { method: 'POST', body: data })
 
       updateProgress('Processing gradebooks…', 60)
       const payload = await response.json()
