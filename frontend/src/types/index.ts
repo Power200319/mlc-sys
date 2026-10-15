@@ -4,6 +4,7 @@ export interface Output {
   reason?: string
   filename?: string
   count?: number
+  format?: 'PDF' | 'DOCX'
 }
 
 export interface Subject {

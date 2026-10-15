@@ -20,14 +20,6 @@ services:
         fromDatabase:
           name: mlcis-db
           property: connectionString
-      - key: MLCIS_SCORING_TEMPLATE
-        sync: false
-      - key: MLCIS_QUARTER_REPORT_TEMPLATE
-        sync: false
-      - key: MLCIS_SEMESTER_REPORT_TEMPLATE
-        sync: false
-      - key: MLCIS_END_YEAR_REPORT_TEMPLATE
-        sync: false
       - key: MLCIS_JOB_RETENTION_SECONDS
         value: "600"
 

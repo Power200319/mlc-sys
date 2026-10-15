@@ -8,10 +8,12 @@ React + Django application that batch-imports Grade 6 subject E-gradebooks into 
 2. Add one or more subject E-gradebook `.xlsx` files. You may add files repeatedly before clicking Import.
 3. The application detects each file's Subject from `SETTINGS!F23` and sends its `Scoring System!AM` cached Total into the correct selected-quarter subject column.
 
-After a successful import, the application also creates one PDF report card per
-student from `1- F- Quarter Report Card Grade G4-6 - MLCIS (2).docx`. Download
-the PDF ZIP to receive separate files, one for each student. The report uses
-only the imported scores and student identity. Unavailable subjects and
+After a successful import, the application creates one report card per student
+from `1- F- Quarter Report Card Grade G4-6 - MLCIS (2).docx`. When the server
+has Microsoft Word (Windows) or LibreOffice installed, the download is a PDF
+ZIP. A standard Render Python service has neither converter, so it safely
+provides a DOCX ZIP instead of failing the report-card download. The report
+uses only the imported scores and student identity. Unavailable subjects and
 attendance fields are left blank rather than retaining template sample data.
 
 For example, Q1 plus English and Khmer Dictation files imports their Totals into `Q1!P` and `Q1!G` respectively. The first upload supplies the roster; each additional upload must have the identical roster, matched by student ID when present or exact English name otherwise.

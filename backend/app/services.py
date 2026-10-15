@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 import zipfile
 import time
+import os
 from copy import copy
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -468,8 +469,23 @@ def fill_merge_fields(template_path: Path, output_path: Path, values: dict[str, 
 
 
 def convert_word_reports_to_pdf(reports_dir: Path) -> None:
-    script = Path(__file__).with_name("word_to_pdf.ps1")
-    command = ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script), str(reports_dir)]
+    """Convert reports with the converter available on the current server."""
+    libreoffice = shutil.which("libreoffice") or shutil.which("soffice")
+    if libreoffice:
+        command = [
+            libreoffice,
+            "--headless",
+            "--convert-to", "pdf:writer_pdf_Export",
+            "--outdir", str(reports_dir),
+            *[str(document) for document in reports_dir.glob("*.docx")],
+        ]
+    elif os.name == "nt":
+        script = Path(__file__).with_name("word_to_pdf.ps1")
+        command = ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script), str(reports_dir)]
+    else:
+        raise ProcessingError(
+            "PDF conversion is unavailable on this server. Student report cards are provided as a DOCX ZIP instead."
+        )
     completed = subprocess.run(command, capture_output=True, text=True, timeout=180)
     expected = list(reports_dir.glob("*.docx"))
     if completed.returncode != 0 or any(not document.with_suffix(".pdf").exists() for document in expected):
@@ -481,7 +497,7 @@ def safe_filename(value: str) -> str:
     return re.sub(r"[<>:\\/?*\"|]", "_", value).strip(" .") or "student"
 
 
-def generate_report_cards(template_path: Path, job_dir: Path, uploads: list[SubjectUpload], academic_year: str, period: str) -> tuple[Path, int]:
+def generate_report_cards(template_path: Path, job_dir: Path, uploads: list[SubjectUpload], academic_year: str, period: str) -> tuple[Path, int, str, str | None]:
     if not template_path.exists():
         raise ProcessingError("The report-card Word template file could not be found.")
     reports_dir = job_dir / "student-report-cards"
@@ -491,12 +507,22 @@ def generate_report_cards(template_path: Path, job_dir: Path, uploads: list[Subj
         docx_path = reports_dir / f"{stem}.docx"
         values = report_values(index - 1, uploads, academic_year, len(uploads[0].students))
         fill_merge_fields(template_path, docx_path, values, period)
-    convert_word_reports_to_pdf(reports_dir)
-    for docx_path in reports_dir.glob("*.docx"):
-        docx_path.unlink()
+    report_format = "PDF"
+    conversion_warning = None
+    try:
+        convert_word_reports_to_pdf(reports_dir)
+    except ProcessingError as error:
+        # A Render Python service has no Microsoft Word by default. Keep the
+        # individually populated Word reports so the user can still download
+        # and print them instead of losing the whole report-card output.
+        report_format = "DOCX"
+        conversion_warning = str(error)
+    else:
+        for docx_path in reports_dir.glob("*.docx"):
+            docx_path.unlink()
     archive_base = job_dir / "Grade-6A-Student-Report-Cards"
     archive = Path(shutil.make_archive(str(archive_base), "zip", reports_dir))
-    return archive, len(uploads[0].students)
+    return archive, len(uploads[0].students), report_format, conversion_warning
 
 
 def build_subject_uploads(path: Path, filename: str) -> list[SubjectUpload]:
@@ -656,7 +682,7 @@ def process_gradebooks(uploads, period: str, scoring_workbook=None, print_stage:
                 f"Print the existing {'FinalSem1 reportcard' if period == 'Q2' else 'FinalSem2'} sheet from that workbook."
             )
             raise ProcessingError("Semester PDFs are not generated before the manual exam is entered.")
-        reports_archive, report_count = generate_report_cards(
+        reports_archive, report_count, report_format, conversion_warning = generate_report_cards(
             templates[stage["template"]] if stage else templates["quarter_report"],
             job_dir,
             subject_uploads,
@@ -667,8 +693,11 @@ def process_gradebooks(uploads, period: str, scoring_workbook=None, print_stage:
             "available": True,
             "filename": reports_archive.name,
             "count": report_count,
+            "format": report_format,
             "download": f"/api/download/{job_id}/report_cards/",
         }
+        if conversion_warning:
+            warnings.append(conversion_warning)
     except (ProcessingError, OSError, subprocess.TimeoutExpired) as error:
         warnings.append(str(error))
         report_output = {"available": False, "reason": "Student PDF reports could not be created."}

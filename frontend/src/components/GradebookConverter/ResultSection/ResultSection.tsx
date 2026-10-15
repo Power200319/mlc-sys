@@ -80,8 +80,8 @@ export const ResultSection = ({ result }: ResultSectionProps) => {
                 </svg>
               </span>
               <div className="download-btn-content">
-                <span>Download Student PDFs (ZIP)</span>
-                <span className="download-btn-meta">{reportOutput.count} reports</span>
+                <span>Download Student {reportOutput.format || 'PDF'} Reports (ZIP)</span>
+                <span className="download-btn-meta">{reportOutput.count} {reportOutput.format || 'PDF'} reports</span>
               </div>
             </a>
           )}
