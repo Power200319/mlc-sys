@@ -6,6 +6,7 @@ import uuid
 import zipfile
 import time
 import os
+import gc
 from copy import copy
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -535,29 +536,39 @@ def generate_report_cards(template_path: Path, job_dir: Path, uploads: list[Subj
 
 
 def build_subject_uploads(path: Path, filename: str) -> list[SubjectUpload]:
-    subject_name = source_subject(path)
+    # Read SETTINGS and the workbook's sheet names in a single pass. The old
+    # path opened every workbook separately for subject, teacher, period, and
+    # sheet detection; that multiplied peak memory on a small Render instance.
+    workbook = load_workbook(path, read_only=True, data_only=True)
+    try:
+        if "SETTINGS" not in workbook.sheetnames:
+            raise ProcessingError(f"{filename}: an uploaded file does not contain a SETTINGS sheet.")
+        settings_sheet = workbook["SETTINGS"]
+        subject_name = str(settings_sheet["F23"].value or "").strip()
+        setting_teacher = str(settings_sheet["F20"].value or "").strip()
+        period_value = str(settings_sheet["F14"].value or "").strip()
+        normalised_period = period_value.upper().replace("QUARTER", "Q").replace(" ", "")
+        period = normalised_period if normalised_period in SUPPORTED_PERIODS else None
+        sheet_names = set(workbook.sheetnames)
+    finally:
+        workbook.close()
+
     mapping = MAPPING_BY_SOURCE_SUBJECT.get(normalise_subject(subject_name))
     if mapping is not None:
         return [SubjectUpload(
             filename,
             subject_name,
-            source_teacher_name(path),
+            setting_teacher,
             mapping,
-            source_period(path),
+            period,
             read_subject_students(path),
         )]
 
     # SETTINGS!F23 is blank in all-subject files. Detect each known subject
     # tab, allowing one uploaded file to contribute 3, 4, 5, or all subjects.
-    workbook = load_workbook(path, read_only=True, data_only=True)
-    try:
-        detected = [(sheet_name, subject_mapping) for sheet_name, subject_mapping in MULTI_SUBJECT_SHEETS.items() if sheet_name in workbook.sheetnames]
-    finally:
-        workbook.close()
+    detected = [(sheet_name, subject_mapping) for sheet_name, subject_mapping in MULTI_SUBJECT_SHEETS.items() if sheet_name in sheet_names]
     if not detected:
         raise ProcessingError(f"{filename}: Subject is blank in SETTINGS!F23 and no supported subject sheets were found.")
-    period = source_period(path)
-    setting_teacher = source_teacher_name(path)
     results: list[SubjectUpload] = []
     for sheet_name, subject_mapping in detected:
         students, sheet_teacher = read_multi_subject_sheet(path, sheet_name)
@@ -642,6 +653,10 @@ def process_gradebooks(uploads, period: str, scoring_workbook=None, print_stage:
         finally:
             # Parsed values now live only in memory; never retain uploaded files.
             source_path.unlink(missing_ok=True)
+            # openpyxl workbooks can retain XML objects until garbage
+            # collection. Collect between files to keep all-subject batches
+            # within the memory budget of a small Render service.
+            gc.collect()
 
     scoring_output = job_dir / OUTPUT_FILENAME
     try:
