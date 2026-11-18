@@ -1,0 +1,217 @@
+{
+  "grade": 6,
+  "label": "Grade 6",
+  "scoring_template": "templates/grade6/G4-G6 Scoring System Final 2024-2025-MLCIS -6A.xlsm",
+  "report_template": "templates/grade6/1- F- Quarter Report Card Grade G4-6 - MLCIS (3).docx",
+  "semester_template": "templates/grade6/2- F- SEM1 and Q2 Report Card G4-6.doc",
+  "end_year_template": "templates/grade6/4- F- End of Year Report Card G4-6.doc",
+  "periods": ["Q1", "Q2", "Q3", "Q4"],
+  "period_sheets": {
+    "Q1": "Q1",
+    "Q2": "Q2",
+    "Q3": "Q3",
+    "Q4": "Q4"
+  },
+  "comment_sheets": {
+    "Q1": "Comment Q1",
+    "Q2": "Comment Q2",
+    "Q3": "Comment Q3",
+    "Q4": "Comment Q4"
+  },
+  "subjects": [
+    {
+      "key": "khmer_dictation",
+      "label": "Khmer Dictation",
+      "source_subject": "Khmer Dictation",
+      "target_score_column": "G",
+      "target_letter_column": "W",
+      "comment_columns": ["AQ", "AR", "AS"],
+      "teacher_name_column": "AT",
+      "credit": 2
+    },
+    {
+      "key": "khmer_essays",
+      "label": "Khmer Essays",
+      "source_subject": "Khmer Essays",
+      "target_score_column": "H",
+      "target_letter_column": "X",
+      "comment_columns": ["AU", "AV", "AW"],
+      "teacher_name_column": "AX",
+      "credit": 2
+    },
+    {
+      "key": "khmer_reading",
+      "label": "Khmer Reading",
+      "source_subject": "Khmer Reading",
+      "target_score_column": "I",
+      "target_letter_column": "Y",
+      "comment_columns": ["AY", "AZ", "BA"],
+      "teacher_name_column": "BB",
+      "credit": 3
+    },
+    {
+      "key": "khmer_public_speaking",
+      "label": "Khmer Public Speaking",
+      "source_subject": "Khmer Public Speaking",
+      "target_score_column": "J",
+      "target_letter_column": "Z",
+      "comment_columns": ["BC", "BD", "BE"],
+      "teacher_name_column": "BF",
+      "credit": 1
+    },
+    {
+      "key": "khmer_math",
+      "label": "Khmer Math",
+      "source_subject": "Khmer Math",
+      "target_score_column": "K",
+      "target_letter_column": "AA",
+      "comment_columns": ["BG", "BH", "BI"],
+      "teacher_name_column": "BJ",
+      "credit": 5
+    },
+    {
+      "key": "khmer_social_studies",
+      "label": "Khmer Social Studies",
+      "source_subject": "Khmer Social Studies",
+      "target_score_column": "L",
+      "target_letter_column": "AB",
+      "comment_columns": ["BK", "BL", "BM"],
+      "teacher_name_column": "BN",
+      "credit": 3
+    },
+    {
+      "key": "khmer_science",
+      "label": "Khmer Science",
+      "source_subject": "Khmer Science",
+      "target_score_column": "M",
+      "target_letter_column": "AC",
+      "comment_columns": ["BO", "BP", "BQ"],
+      "teacher_name_column": "BR",
+      "credit": 2
+    },
+    {
+      "key": "sport",
+      "label": "Sport",
+      "source_subject": "Sport",
+      "target_score_column": "N",
+      "target_letter_column": "AD",
+      "comment_columns": ["BS", "BT", "BU"],
+      "teacher_name_column": "BV",
+      "credit": 1
+    },
+    {
+      "key": "health_education",
+      "label": "Health Education",
+      "source_subject": "Health Education",
+      "target_score_column": "O",
+      "target_letter_column": "AE",
+      "comment_columns": ["BW", "BX", "BY"],
+      "teacher_name_column": "BZ",
+      "credit": 1
+    },
+    {
+      "key": "english",
+      "label": "English",
+      "source_subject": "English",
+      "target_score_column": "P",
+      "target_letter_column": "AF",
+      "comment_columns": ["G", "H", "I"],
+      "teacher_name_column": "J",
+      "credit": 5
+    },
+    {
+      "key": "english_grammar",
+      "label": "English Grammar",
+      "source_subject": "English Grammar",
+      "target_score_column": "Q",
+      "target_letter_column": "AG",
+      "comment_columns": ["AI", "AJ", "AK"],
+      "teacher_name_column": "AL",
+      "credit": 1
+    },
+    {
+      "key": "english_math",
+      "label": "English Math",
+      "source_subject": "English Math",
+      "target_score_column": "R",
+      "target_letter_column": "AH",
+      "comment_columns": ["K", "L", "M"],
+      "teacher_name_column": "N",
+      "credit": 5
+    },
+    {
+      "key": "english_science",
+      "label": "English Science",
+      "source_subject": "English Science",
+      "target_score_column": "S",
+      "target_letter_column": "AI",
+      "comment_columns": ["O", "P", "Q"],
+      "teacher_name_column": "R",
+      "credit": 3
+    },
+    {
+      "key": "chinese",
+      "label": "Chinese",
+      "source_subject": "Chinese",
+      "target_score_column": "T",
+      "target_letter_column": "AJ",
+      "comment_columns": ["AA", "AB", "AC"],
+      "teacher_name_column": "AD",
+      "credit": 2
+    },
+    {
+      "key": "robothink",
+      "label": "RoboThink",
+      "source_subject": "RoboThink",
+      "target_score_column": "U",
+      "target_letter_column": "AK",
+      "comment_columns": ["S", "T", "U"],
+      "teacher_name_column": "V",
+      "credit": 2
+    },
+    {
+      "key": "computer",
+      "label": "Computer",
+      "source_subject": "Computer",
+      "target_score_column": "V",
+      "target_letter_column": "AL",
+      "comment_columns": ["AE", "AF", "AG"],
+      "teacher_name_column": "AH",
+      "credit": 2
+    }
+  ],
+  "subject_score_keys": [
+    "khmer_dictation", "khmer_essays", "khmer_reading", "khmer_public_speaking",
+    "khmer_math", "khmer_social_studies", "khmer_science", "sport", "health_education",
+    "english", "english_grammar", "english_math", "english_science", "chinese", "robothink", "computer"
+  ],
+  "grading_scale": [
+    {"min": 90, "grade": "A", "point": 4.0},
+    {"min": 80, "grade": "B", "point": 3.0},
+    {"min": 70, "grade": "C", "point": 2.0},
+    {"min": 60, "grade": "D", "point": 1.5},
+    {"min": 50, "grade": "E", "point": 1.0},
+    {"min": 0, "grade": "F", "point": 0.0}
+  ],
+  "report_cell_map": {
+    "english_name": "F2",
+    "sex": "F4",
+    "student_id": "F5",
+    "khmer_name": "M_50",
+    "academic_year": "ACADEMIC_YEAR",
+    "khmer_avg": "F90",
+    "khmer_grade": "F91",
+    "khmer_credits": "F87",
+    "english_avg": "F96",
+    "english_grade": "F97",
+    "english_credits": "F93",
+    "total_credits": "F99",
+    "overall_avg": "F102",
+    "overall_grade": "F103",
+    "gpa": "F104",
+    "rank": "F105",
+    "class_size": "F107",
+    "attendance": ["F108", "F109", "F110", "F111", "F112", "F113"],
+    "total_school_day": "Total_School_Day"
+  }
+}

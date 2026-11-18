@@ -13,8 +13,15 @@ export interface Subject {
   source_period: string | null
 }
 
+export interface GradeOption {
+  value: number
+  label: string
+}
+
 export interface Result {
   period: string
+  grade: number
+  grade_label: string
   print_label?: string | null
   student_count: number
   populated_students: number

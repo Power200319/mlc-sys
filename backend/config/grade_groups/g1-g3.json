@@ -1,0 +1,30 @@
+{
+  "label": "G1-G3 profile",
+  "scoring_template": "templates/grade1/scoring_template.xlsm",
+  "report_template": null,
+  "periods": ["Q1", "Q2", "Q3", "Q4"],
+  "period_sheets": {"Q1": "Q1", "Q2": "Q2", "Q3": "Q3", "Q4": "Q4"},
+  "comment_sheets": {"Q1": "Comment Q1", "Q2": "Comment Q2", "Q3": "Comment Q3", "Q4": "Comment Q4"},
+  "subjects": [
+    {"key":"khmer_dictation","label":"Khmer Dictation","source_subject":"Khmer Dictation","source_aliases":["Khmer Dictations"],"target_score_column":"G","target_letter_column":"X","comment_columns":["AQ","AR","AS"],"teacher_name_column":"AT","credit":3},
+    {"key":"khmer_essays","label":"Khmer Essays","source_subject":"Khmer Essays","source_aliases":["Khmer Essay","Khmer Eassay"],"target_score_column":"H","target_letter_column":"Y","comment_columns":["AU","AV","AW"],"teacher_name_column":"AX","credit":3},
+    {"key":"khmer_reading","label":"Khmer Reading","source_subject":"Khmer Reading","source_aliases":["Reading"],"target_score_column":"I","target_letter_column":"Z","comment_columns":["AY","AZ","BA"],"teacher_name_column":"BB","credit":3},
+    {"key":"khmer_calligraphy","label":"Khmer Calligraphy","source_subject":"Khmer Calligraphy","source_aliases":["Callingraphy"],"target_score_column":"J","target_letter_column":"AA","comment_columns":["BC","BD","BE"],"teacher_name_column":"BF","credit":1},
+    {"key":"khmer_math","label":"Khmer Math","source_subject":"Khmer Math","source_aliases":["KH-Math"],"target_score_column":"K","target_letter_column":"AB","comment_columns":["BG","BH","BI"],"teacher_name_column":"BJ","credit":5},
+    {"key":"khmer_social_studies","label":"Khmer Social Studies","source_subject":"Khmer Social Studies","source_aliases":["KH-Social Studies","Kh-Social Studies","Khmer Social Study"],"target_score_column":"L","target_letter_column":"AC","comment_columns":["BK","BL","BM"],"teacher_name_column":"BN","credit":3},
+    {"key":"khmer_science","label":"Khmer Science","source_subject":"Khmer Science","source_aliases":["KH-Science"],"target_score_column":"M","target_letter_column":"AD","comment_columns":["BO","BP","BQ"],"teacher_name_column":"BR","credit":3},
+    {"key":"sport","label":"Sport","source_subject":"Sport","target_score_column":"N","target_letter_column":"AE","comment_columns":["BS","BT","BU"],"teacher_name_column":"BV","credit":1},
+    {"key":"health_education","label":"Health Education","source_subject":"Health Education","target_score_column":"O","target_letter_column":"AF","comment_columns":["BW","BX","BY"],"teacher_name_column":"BZ","credit":1},
+    {"key":"english","label":"English","source_subject":"English","target_score_column":"P","target_letter_column":"AG","comment_columns":["G","H","I"],"teacher_name_column":"J","credit":5},
+    {"key":"english_grammar","label":"English Grammar","source_subject":"English Grammar","source_aliases":["Eng-Grammar","Grammar"],"target_score_column":"Q","target_letter_column":"AH","comment_columns":["AI","AJ","AK"],"teacher_name_column":"AL","credit":1},
+    {"key":"english_math","label":"English Math","source_subject":"English Math","source_aliases":["Eng-Math","Mathematics"],"target_score_column":"R","target_letter_column":"AI","comment_columns":["K","L","M"],"teacher_name_column":"N","credit":5},
+    {"key":"english_science","label":"English Science","source_subject":"English Science","source_aliases":["Eng-Science","Science"],"target_score_column":"S","target_letter_column":"AJ","comment_columns":["O","P","Q"],"teacher_name_column":"R","credit":3},
+    {"key":"chinese","label":"Chinese","source_subject":"Chinese","target_score_column":"T","target_letter_column":"AK","comment_columns":["AA","AB","AC"],"teacher_name_column":"AD","credit":2},
+    {"key":"robothink","label":"RoboThink","source_subject":"RoboThink","source_aliases":["Robotics"],"target_score_column":"U","target_letter_column":"AL","comment_columns":["S","T","U"],"teacher_name_column":"V","credit":2},
+    {"key":"computer","label":"Computer","source_subject":"Computer","target_score_column":"V","target_letter_column":"AM","comment_columns":["AE","AF","AG"],"teacher_name_column":"AH","credit":2},
+    {"key":"arts","label":"Arts","source_subject":"Arts","source_aliases":["Art"],"target_score_column":"W","target_letter_column":"AN","comment_columns":["AM","AN","AO"],"teacher_name_column":"AP","credit":1}
+  ],
+  "subject_score_keys": ["khmer_dictation","khmer_essays","khmer_reading","khmer_calligraphy","khmer_math","khmer_social_studies","khmer_science","sport","health_education","english","english_grammar","english_math","english_science","chinese","robothink","computer","arts"],
+  "grading_scale": [{"min":90,"grade":"A","point":4.0},{"min":80,"grade":"B","point":3.0},{"min":70,"grade":"C","point":2.0},{"min":60,"grade":"D","point":1.5},{"min":50,"grade":"E","point":1.0},{"min":0,"grade":"F","point":0.0}],
+  "report_cell_map": {}
+}

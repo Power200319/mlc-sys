@@ -22,6 +22,7 @@ from app import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/health/', views.health, name='health'),
+    path('api/grades/', views.grades, name='grades'),
     path('api/process/', views.process, name='process'),
     path('api/download/<str:job_id>/<str:kind>/', views.download, name='download'),
 ]

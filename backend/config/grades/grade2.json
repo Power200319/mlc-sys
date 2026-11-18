@@ -1,0 +1,103 @@
+{
+  "grade": 2,
+  "label": "Grade 2",
+  "scoring_template": "templates/grade2/scoring_template.xlsm",
+  "report_template": "templates/grade2/report_card.docx",
+  "semester_template": null,
+  "end_year_template": null,
+  "periods": ["Q1", "Q2", "Q3", "Q4"],
+  "period_sheets": {
+    "Q1": "Q1",
+    "Q2": "Q2",
+    "Q3": "Q3",
+    "Q4": "Q4"
+  },
+  "comment_sheets": {
+    "Q1": "Comment Q1",
+    "Q2": "Comment Q2",
+    "Q3": "Comment Q3",
+    "Q4": "Comment Q4"
+  },
+  "subjects": [
+    {
+      "key": "khmer",
+      "label": "Khmer",
+      "source_subject": "Khmer",
+      "target_score_column": "G",
+      "target_letter_column": "W",
+      "comment_columns": ["AQ", "AR", "AS"],
+      "teacher_name_column": "AT",
+      "credit": 5
+    },
+    {
+      "key": "math",
+      "label": "Math",
+      "source_subject": "Math",
+      "target_score_column": "H",
+      "target_letter_column": "X",
+      "comment_columns": ["AU", "AV", "AW"],
+      "teacher_name_column": "AX",
+      "credit": 5
+    },
+    {
+      "key": "english",
+      "label": "English",
+      "source_subject": "English",
+      "target_score_column": "I",
+      "target_letter_column": "Y",
+      "comment_columns": ["AY", "AZ", "BA"],
+      "teacher_name_column": "BB",
+      "credit": 3
+    },
+    {
+      "key": "science",
+      "label": "Science",
+      "source_subject": "Science",
+      "target_score_column": "J",
+      "target_letter_column": "Z",
+      "comment_columns": ["BC", "BD", "BE"],
+      "teacher_name_column": "BF",
+      "credit": 2
+    },
+    {
+      "key": "social_studies",
+      "label": "Social Studies",
+      "source_subject": "Social Studies",
+      "target_score_column": "K",
+      "target_letter_column": "AA",
+      "comment_columns": ["BG", "BH", "BI"],
+      "teacher_name_column": "BJ",
+      "credit": 2
+    }
+  ],
+  "subject_score_keys": ["khmer", "math", "english", "science", "social_studies"],
+  "grading_scale": [
+    {"min": 90, "grade": "A", "point": 4.0},
+    {"min": 80, "grade": "B", "point": 3.0},
+    {"min": 70, "grade": "C", "point": 2.0},
+    {"min": 60, "grade": "D", "point": 1.5},
+    {"min": 50, "grade": "E", "point": 1.0},
+    {"min": 0, "grade": "F", "point": 0.0}
+  ],
+  "report_cell_map": {
+    "english_name": "F2",
+    "sex": "F4",
+    "student_id": "F5",
+    "khmer_name": "M_50",
+    "academic_year": "ACADEMIC_YEAR",
+    "khmer_avg": "F90",
+    "khmer_grade": "F91",
+    "khmer_credits": "F87",
+    "english_avg": "F96",
+    "english_grade": "F97",
+    "english_credits": "F93",
+    "total_credits": "F99",
+    "overall_avg": "F102",
+    "overall_grade": "F103",
+    "gpa": "F104",
+    "rank": "F105",
+    "class_size": "F107",
+    "attendance": ["F108", "F109", "F110", "F111", "F112", "F113"],
+    "total_school_day": "Total_School_Day"
+  }
+}

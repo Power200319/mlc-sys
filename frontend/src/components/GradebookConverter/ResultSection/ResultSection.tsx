@@ -10,8 +10,11 @@ export const ResultSection = ({ result }: ResultSectionProps) => {
   const scoringOutput = result.outputs.scoring
   const reportOutput = result.outputs.report_cards
   const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
-  const downloadUrl = (path: string) =>
-    /^https?:\/\//i.test(path) ? path : `${apiBase}${path}`
+  const downloadUrl = (path: string) => {
+    const url = /^https?:\/\//i.test(path) ? path : `${apiBase}${path}`
+    const separator = url.includes('?') ? '&' : '?'
+    return `${url}${separator}grade=${encodeURIComponent(result.grade)}`
+  }
 
   return (
     <section className="result-section" aria-live="polite">
@@ -27,7 +30,7 @@ export const ResultSection = ({ result }: ResultSectionProps) => {
           title={`${result.print_label || result.period} Complete`}
           subtitle={
             <p className="result-summary">
-              {result.subjects.length} subject{result.subjects.length !== 1 ? 's' : ''} imported ·{' '}
+              {result.grade_label} · {result.subjects.length} subject{result.subjects.length !== 1 ? 's' : ''} imported ·{' '}
               {result.student_count} student{result.student_count !== 1 ? 's' : ''} processed
             </p>
           }

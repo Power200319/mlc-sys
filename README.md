@@ -1,6 +1,24 @@
 # MLCIS Gradebook Converter
 
-React + Django application that batch-imports Grade 6 subject E-gradebooks into a fresh copy of the MLCIS scoring format. The original `.xlsm` template is never overwritten.
+React + Django application that batch-imports Grade 1-9 subject E-gradebooks into a fresh copy of the matching MLCIS scoring format. The original `.xlsm` template is never overwritten.
+
+## Supported grade profiles
+
+- Grades 1-3 use the G1-G3 scoring format and its 17 verified score columns.
+- Grades 4-6 use the G4-G6 scoring format and its 16 verified score columns.
+- Grades 7-9 use the G7-G9 scoring format and its 19 verified score columns.
+
+The grade selector chooses the profile; it does not assume that all grades have
+the same subjects. G4-G6 uses the approved quarter report-card template. G1-G3
+and G7-G9 currently generate the scoring workbook only until their own Word
+report-card templates are supplied and their merge fields are verified.
+
+The supplied E-Gradebook G1-G8 format is also supported as an all-subject
+source: it has a blank `SETTINGS!F23`, subject data on separate subject tabs,
+and final Total values in the tab's `Total` column. Subject-tab aliases such as
+`Reading`, `Callingraphy`, and `Kh-Social Studies` are matched to the relevant
+grade profile. Subjects not present in the selected scoring template are not
+written into a different column.
 
 ## Dynamic import flow
 

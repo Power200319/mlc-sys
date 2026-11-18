@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react'
-import type { Result } from '../../../types'
+import { useState, useCallback, useEffect } from 'react'
+import type { Result, GradeOption } from '../../../types'
 import { printPackages } from '../../../utils/helpers'
 import { useFileSelection, useProcessing } from '../../../hooks'
 import { Header } from '../Header'
 import { PackageSelector } from '../PackageSelector'
+import { GradeSelector } from '../GradeSelector'
 import { ScoringWorkbookUpload } from '../ScoringWorkbookUpload'
 import { FileDropZone } from '../FileDropZone'
 import { ActionBar } from '../ActionBar'
@@ -14,6 +15,8 @@ import './App.css'
 
 const App = () => {
   const [printStage, setPrintStage] = useState('P1')
+  const [grade, setGrade] = useState(6)
+  const [grades, setGrades] = useState<GradeOption[]>([])
   const [scoringWorkbook, setScoringWorkbook] = useState<File | null>(null)
 
   const { files, addFiles, removeFile, clearAllFiles } = useFileSelection()
@@ -21,6 +24,22 @@ const App = () => {
     useProcessing()
 
   const selectedPackage = printPackages.find((p) => p.value === printStage) || printPackages[0]
+
+  useEffect(() => {
+    const fetchGrades = async () => {
+      try {
+        const apiBase = import.meta.env.VITE_API_BASE_URL || ''
+        const response = await fetch(`${apiBase}/api/grades/`)
+        if (response.ok) {
+          const data = await response.json()
+          setGrades(data.grades || [])
+        }
+      } catch {
+        // Silently fail; grades will be empty and selector shows loading
+      }
+    }
+    fetchGrades()
+  }, [])
 
   const handleAddFiles = useCallback(
     (incoming?: FileList | File[]) => {
@@ -53,6 +72,7 @@ const App = () => {
     files.forEach((file) => data.append('gradebooks', file))
     data.append('period', selectedPackage.period)
     data.append('print_stage', selectedPackage.value)
+    data.append('grade', String(grade))
     if (scoringWorkbook) data.append('scoring_workbook', scoringWorkbook)
 
     try {
@@ -79,10 +99,16 @@ const App = () => {
       <main className="app-main">
         <div className="layout">
           <aside className="sidebar">
+            <GradeSelector
+              selectedGrade={grade}
+              onChange={setGrade}
+              grades={grades}
+              disabled={processing}
+            />
             <PackageSelector selectedValue={printStage} onChange={setPrintStage} disabled={processing} />
 
             <div className="sidebar-footer">
-              <p className="sidebar-hint">Select a print package to begin</p>
+              <p className="sidebar-hint">Select grade and print package to begin</p>
             </div>
           </aside>
 

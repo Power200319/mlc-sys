@@ -6,6 +6,7 @@ from django.test import Client, SimpleTestCase, override_settings
 from openpyxl import Workbook, load_workbook
 
 from .mapping import MAPPING_BY_KEY
+from .grade_config import load_grade_config
 from .services import (
     Student,
     SubjectUpload,
@@ -15,10 +16,42 @@ from .services import (
     populate_scoring_template,
     report_values,
     roster_matches,
+    output_filename,
+    configured_templates,
+    ensure_scoring_template_is_usable,
 )
 
 
 class BatchImportTests(SimpleTestCase):
+    def test_grade_group_templates_and_verified_score_columns_exist(self):
+        """G1-3, G4-6, and G7-9 use separate approved score formats."""
+        expected_columns = {
+            1: {"khmer_dictation": "G", "english": "P", "arts": "W"},
+            4: {"khmer_dictation": "G", "english": "P", "computer": "V"},
+            7: {"khmer_dictation": "G", "english": "S", "project_based": "Y"},
+        }
+        for grade, expected in expected_columns.items():
+            config = load_grade_config(grade)
+            template = configured_templates(grade)["scoring"]
+            self.assertIsNotNone(template)
+            ensure_scoring_template_is_usable(template, grade)
+            mapping_by_key = config.mapping_by_key
+            for key, column in expected.items():
+                self.assertEqual(mapping_by_key[key].target_score_column, column)
+
+    def test_e_gradebook_all_subject_tab_aliases_match_grade_profiles(self):
+        """Names used in the supplied E-Gradebook G1-G8 source format."""
+        expected = {
+            1: {"Reading": "khmer_reading", "Callingraphy": "khmer_calligraphy", "Kh-Social Studies": "khmer_social_studies"},
+            4: {"Reading": "khmer_reading", "Public Speaking": "khmer_public_speaking", "Kh-Social Studies": "khmer_social_studies", "Eng-Math": "english_math", "Eng-Science": "english_science"},
+            7: {"Reading": "khmer_reading", "KH-Math": "khmer_math", "SPORT": "sport", "Eng-Math": "english_math", "Eng-Science": "english_science"},
+        }
+        for grade, aliases in expected.items():
+            mappings = load_grade_config(grade).mapping_by_source_subject
+            for source_name, expected_key in aliases.items():
+                normalised = "".join(c for c in source_name.casefold() if c.isalnum())
+                self.assertEqual(mappings[normalised].key, expected_key)
+
     @override_settings(SECURE_SSL_REDIRECT=False)
     def test_process_endpoint_accepts_multiple_upload_requests_without_csrf(self):
         client = Client(enforce_csrf_checks=True)
@@ -138,6 +171,31 @@ class BatchImportTests(SimpleTestCase):
             self.assertIsNone(result["Comment Q4"]["G9"].value)
             result.close()
 
+    def test_q4_identity_fields_follow_q4_headers(self):
+        with TemporaryDirectory() as directory:
+            template = Path(directory) / "template.xlsx"
+            output = Path(directory) / "output.xlsx"
+            workbook = Workbook()
+            for name in ("Q1", "Q2", "Q3", "Q4"):
+                sheet = workbook.active if name == "Q1" else workbook.create_sheet(name)
+                sheet.title = name
+                sheet["D13"] = "ID" if name == "Q4" else "Sex"
+                sheet["E13"] = "Sex" if name == "Q4" else "ID"
+                sheet["P15"] = 99
+            for name in ("Comment Q1", "Comment Q2", "Comment Q3", "Comment Q4"):
+                workbook.create_sheet(name)["A9"] = ""
+            workbook.save(template)
+            workbook.close()
+
+            roster = [Student(11, 1, "Kinh Rothavotey", "គិញ រដ្ឋាវត្តី", "0205", "F", "III", 88.75, (None, None, None))]
+            english = SubjectUpload("english.xlsx", "English", "Khat Tho", MAPPING_BY_KEY["english"], "Q4", roster)
+            populate_scoring_template(template, output, "Q4", [english])
+
+            result = load_workbook(output, data_only=False)
+            self.assertEqual(result["Q4"]["D15"].value, "0205")
+            self.assertEqual(result["Q4"]["E15"].value, "F")
+            result.close()
+
     def test_continued_workbook_preserves_previous_quarter_and_comments(self):
         with TemporaryDirectory() as directory:
             template = Path(directory) / "template.xlsx"
@@ -184,7 +242,7 @@ class BatchImportTests(SimpleTestCase):
             jobs_dir = Path(directory) / "jobs"
             job_dir = jobs_dir / "safejob"
             job_dir.mkdir(parents=True)
-            workbook = job_dir / "G4-G6 Scoring System Final 2024-2025-MLCIS -6A.xlsm"
+            workbook = job_dir / output_filename()
             workbook.write_bytes(b"private student data")
             with override_settings(MLCIS_JOB_DIR=jobs_dir, MLCIS_JOB_RETENTION_SECONDS=600):
                 content, filename = consume_output("safejob", "scoring")

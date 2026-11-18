@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'MLCIS Gradebook Converter',
         short_name: 'Gradebook',
-        description: 'MLC International School Grade 6 E-gradebook to Scoring System Converter',
+        description: 'MLC International School E-gradebook to Scoring System Converter',
         theme_color: '#2563eb',
         background_color: '#f3f5f9',
         display: 'standalone',
