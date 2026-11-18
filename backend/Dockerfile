@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # LibreOffice Writer is required for DOCX-to-PDF conversion on Render. Noto
 # fonts provide Khmer, Latin, and CJK glyph fallback for the school templates.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libreoffice-writer fontconfig fonts-noto-core \
+    && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc fontconfig fonts-noto-core \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

@@ -23,6 +23,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/health/', views.health, name='health'),
     path('api/grades/', views.grades, name='grades'),
+    path('api/early-years/profiles/', views.early_years_profiles_view, name='early-years-profiles'),
+    path('api/early-years/process/', views.process_early_years, name='early-years-process'),
+    path('api/early-years/download/<str:job_id>/', views.download_early_years, name='early-years-download'),
     path('api/process/', views.process, name='process'),
     path('api/download/<str:job_id>/<str:kind>/', views.download, name='download'),
 ]

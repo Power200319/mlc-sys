@@ -7,6 +7,7 @@ from openpyxl import Workbook, load_workbook
 
 from .mapping import MAPPING_BY_KEY
 from .grade_config import load_grade_config
+from .early_years import PROFILES, TERMS, normalize
 from .services import (
     Student,
     SubjectUpload,
@@ -23,6 +24,19 @@ from .services import (
 
 
 class BatchImportTests(SimpleTestCase):
+    def test_early_years_is_a_separate_k1_k3_profile_set(self):
+        self.assertEqual(set(PROFILES), {"K1", "K2", "K3"})
+        self.assertEqual(PROFILES["K1"].subjects, ("English", "Khmer", "CP"))
+        self.assertIn("Science", PROFILES["K2"].subjects)
+        self.assertEqual(TERMS["T4"], "Term 4")
+        self.assertEqual(normalize("Pre-reading skills & Visual Comprehension"), "prereadingskillsvisualcomprehension")
+
+    @override_settings(SECURE_SSL_REDIRECT=False)
+    def test_early_years_profiles_endpoint_does_not_use_gradebook_grades(self):
+        response = Client().get("/api/early-years/profiles/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["value"] for item in response.json()["profiles"]], ["K1", "K2", "K3"])
+
     def test_grade_group_templates_and_verified_score_columns_exist(self):
         """G1-3, G4-6, and G7-9 use separate approved score formats."""
         expected_columns = {

@@ -20,6 +20,29 @@ and final Total values in the tab's `Total` column. Subject-tab aliases such as
 grade profile. Subjects not present in the selected scoring template are not
 written into a different column.
 
+## Early Years K1-K3 (separate feature)
+
+The **Early Years K1-K3** button opens a separate workflow for legacy
+E-Progress files. It does not read, modify, or share templates with the G1-G9
+E-Gradebook workflow.
+
+1. Select K1, K2, or K3 and Term 1-4.
+2. Upload one legacy `.xls` E-Progress workbook.
+3. Download a new `.xlsx` copy of the matching K1/K2/K3 Score System.
+
+The service reads the `Student List` roster (or a populated subject roster when
+the list has not been filled), then transfers only outcome values whose
+three-row headers exactly match the selected Term sheet. K1 expects English,
+Khmer, and CP; K2/K3 also expect Math and Science. Missing sheets and unmatched
+outcomes are reported and left blank rather than guessed.
+
+The supplied K1-K3 Score System templates are legacy `.xls` files. They are
+copied and converted through **LibreOffice Calc** to `.xlsx`; the originals are
+never changed. Local use therefore requires LibreOffice with Calc installed.
+The Docker deployment installs `libreoffice-calc` automatically. K1/K3 legacy
+Word report-card templates are not automated yet; their `.doc` layouts and
+merge fields must be converted and verified before generating reports.
+
 ## Dynamic import flow
 
 1. Select Q1, Q2, Q3, or Q4.

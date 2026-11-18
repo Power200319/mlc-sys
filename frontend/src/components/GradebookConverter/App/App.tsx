@@ -11,9 +11,11 @@ import { ActionBar } from '../ActionBar'
 import { ResultSection } from '../ResultSection'
 import { Footer } from '../Footer'
 import { Alert } from '../../ui/Alert'
+import { EarlyYearsApp } from '../../EarlyYears'
 import './App.css'
 
 const App = () => {
+  const [workflow, setWorkflow] = useState<'gradebook' | 'early-years'>('gradebook')
   const [printStage, setPrintStage] = useState('P1')
   const [grade, setGrade] = useState(6)
   const [grades, setGrades] = useState<GradeOption[]>([])
@@ -92,9 +94,11 @@ const App = () => {
     }
   }
 
+  if (workflow === 'early-years') return <EarlyYearsApp onSwitch={() => setWorkflow('gradebook')} />
+
   return (
     <div className="app">
-      <Header />
+      <Header><button className="workflow-switch" type="button" onClick={() => setWorkflow('early-years')}>Early Years K1–K3</button></Header>
 
       <main className="app-main">
         <div className="layout">
