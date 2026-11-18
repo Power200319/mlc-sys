@@ -32,6 +32,7 @@ export const ResultSection = ({ result }: ResultSectionProps) => {
             <p className="result-summary">
               {result.grade_label} · {result.subjects.length} subject{result.subjects.length !== 1 ? 's' : ''} imported ·{' '}
               {result.student_count} student{result.student_count !== 1 ? 's' : ''} processed
+              {typeof result.processing_seconds === 'number' && <> · completed in {result.processing_seconds}s</>}
             </p>
           }
         />

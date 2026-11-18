@@ -112,6 +112,24 @@ class BatchImportTests(SimpleTestCase):
                 self.assertIn(b">First</w:t>", filled_xml)
                 self.assertEqual(archive.read("custom/untouched.bin"), b"unchanged")
 
+    def test_filling_word_fields_can_reuse_cached_template_parts(self):
+        """A batch should not reopen the report template for every student."""
+        from .services import read_docx_template_parts
+        with TemporaryDirectory() as directory:
+            template = Path(directory) / "template.docx"
+            first = Path(directory) / "first.docx"
+            second = Path(directory) / "second.docx"
+            xml = b'''<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> MERGEFIELD F2 </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Sample</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p></w:body></w:document>'''
+            with zipfile.ZipFile(template, "w") as archive:
+                archive.writestr("word/document.xml", xml)
+            parts = read_docx_template_parts(template)
+            fill_merge_fields(template, first, {"F2": "First"}, "Q1", parts)
+            fill_merge_fields(template, second, {"F2": "Second"}, "Q1", parts)
+            with zipfile.ZipFile(first) as archive:
+                self.assertIn(b"First", archive.read("word/document.xml"))
+            with zipfile.ZipFile(second) as archive:
+                self.assertIn(b"Second", archive.read("word/document.xml"))
+
     def test_blank_subject_detects_multiple_subject_tabs(self):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "all-subjects.xlsx"
@@ -171,7 +189,16 @@ class BatchImportTests(SimpleTestCase):
             self.assertEqual(result["Q1"]["G15"].value, 92)
             self.assertEqual(result["Q1"]["P15"].value, 88.75)
             self.assertEqual(result["Q1"]["AF15"].value, '=IF(P15="","", "A")')
+            self.assertEqual(result.calculation.calcMode, "auto")
+            self.assertTrue(result.calculation.fullCalcOnLoad)
+            self.assertTrue(result.calculation.forceFullCalc)
             self.assertEqual(result["Comment Q1"]["G9"].value, "Works hard.")
+            self.assertEqual(result["Comment Q1"]["A9"].value, 1)
+            self.assertEqual(result["Comment Q1"]["B9"].value, "Kinh Rothavotey")
+            self.assertEqual(result["Comment Q1"]["C9"].value, "គិញ រដ្ឋាវត្តី")
+            self.assertEqual(result["Comment Q1"]["D9"].value, "0205")
+            self.assertEqual(result["Comment Q1"]["E9"].value, "F")
+            self.assertEqual(result["Comment Q1"]["F9"].value, "III")
             self.assertEqual(result["Comment Q1"]["J9"].value, "Khat Tho")
             self.assertEqual(result["Comment Q1"]["AT9"].value, "Sok Dara")
             self.assertEqual(result["Comment Q1"]["AQ9"].value, "បានល្អ")

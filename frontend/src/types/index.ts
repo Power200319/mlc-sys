@@ -25,6 +25,7 @@ export interface Result {
   print_label?: string | null
   student_count: number
   populated_students: number
+  processing_seconds?: number
   subjects: Subject[]
   warnings: string[]
   outputs: {

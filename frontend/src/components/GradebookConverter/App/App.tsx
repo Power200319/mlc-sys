@@ -77,10 +77,15 @@ const App = () => {
     data.append('grade', String(grade))
     if (scoringWorkbook) data.append('scoring_workbook', scoringWorkbook)
 
+    let processingNotice: number | undefined
     try {
       updateProgress('Uploading & validating…', 30)
       const apiBase = import.meta.env.VITE_API_BASE_URL || ''
+      processingNotice = window.setTimeout(() => {
+        updateProgress('Writing scoring workbook and creating student PDF reports…', 70)
+      }, 1200)
       const response = await fetch(`${apiBase}/api/process/`, { method: 'POST', body: data })
+      window.clearTimeout(processingNotice)
 
       updateProgress('Processing gradebooks…', 60)
       const payload = await response.json()
@@ -91,6 +96,8 @@ const App = () => {
       finishProcessing(true, payload as Result)
     } catch (requestError) {
       finishProcessing(false, requestError instanceof Error ? requestError : new Error('An unexpected error occurred.'))
+    } finally {
+      if (processingNotice !== undefined) window.clearTimeout(processingNotice)
     }
   }
 

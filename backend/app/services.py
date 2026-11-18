@@ -11,7 +11,6 @@ import uuid
 import zipfile
 import time
 import os
-import gc
 from copy import copy
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -126,40 +125,44 @@ def source_teacher_name(workbook_path: Path) -> str:
     return _source_setting(workbook_path, "F20")
 
 
+def _read_subject_students_sheet(sheet) -> list[Student]:
+    """Read a loaded common E-gradebook Scoring System sheet once."""
+    if str(sheet["AM9"].value or "").strip().casefold() != "total":
+        raise ProcessingError("An uploaded file has no verified Scoring System Total column (AM9).")
+    students: list[Student] = []
+    blank_streak = 0
+    for row in range(11, sheet.max_row + 1):
+        name = sheet[f"C{row}"].value
+        if not name:
+            blank_streak += 1
+            if students and blank_streak >= 3:
+                break
+            continue
+        blank_streak = 0
+        total = sheet[f"AM{row}"].value
+        students.append(Student(
+            source_row=row,
+            number=sheet[f"B{row}"].value if isinstance(sheet[f"B{row}"].value, int) else None,
+            english_name=str(name).strip(),
+            khmer_name=str(sheet[f"D{row}"].value or "").strip(),
+            student_id=str(sheet[f"E{row}"].value or "").strip(),
+            sex=str(sheet[f"F{row}"].value or "").strip(),
+            group=str(sheet[f"G{row}"].value or "").strip(),
+            total=float(total) if isinstance(total, (int, float)) else None,
+            comments=tuple(str(sheet[f"{column}{row}"].value or "").strip() or None for column in ("AP", "AQ", "AR")),
+        ))
+    if not students:
+        raise ProcessingError("No student rows with displayed names were found in Scoring System!C11:C.")
+    return students
+
+
 def read_subject_students(workbook_path: Path) -> list[Student]:
-    """Read displayed values from the common E-gradebook Scoring System sheet."""
+    """Compatibility wrapper for callers that only need one standard subject."""
     workbook = load_workbook(workbook_path, read_only=True, data_only=True)
     try:
         if "Scoring System" not in workbook.sheetnames:
             raise ProcessingError("An uploaded file does not contain a Scoring System sheet.")
-        sheet = workbook["Scoring System"]
-        if str(sheet["AM9"].value or "").strip().casefold() != "total":
-            raise ProcessingError("An uploaded file has no verified Scoring System Total column (AM9).")
-        students: list[Student] = []
-        blank_streak = 0
-        for row in range(11, sheet.max_row + 1):
-            name = sheet[f"C{row}"].value
-            if not name:
-                blank_streak += 1
-                if students and blank_streak >= 3:
-                    break
-                continue
-            blank_streak = 0
-            total = sheet[f"AM{row}"].value
-            students.append(Student(
-                source_row=row,
-                number=sheet[f"B{row}"].value if isinstance(sheet[f"B{row}"].value, int) else None,
-                english_name=str(name).strip(),
-                khmer_name=str(sheet[f"D{row}"].value or "").strip(),
-                student_id=str(sheet[f"E{row}"].value or "").strip(),
-                sex=str(sheet[f"F{row}"].value or "").strip(),
-                group=str(sheet[f"G{row}"].value or "").strip(),
-                total=float(total) if isinstance(total, (int, float)) else None,
-                comments=tuple(str(sheet[f"{column}{row}"].value or "").strip() or None for column in ("AP", "AQ", "AR")),
-            ))
-        if not students:
-            raise ProcessingError("No student rows with displayed names were found in Scoring System!C11:C.")
-        return students
+        return _read_subject_students_sheet(workbook["Scoring System"])
     finally:
         workbook.close()
 
@@ -168,51 +171,47 @@ def _first_nonempty(values) -> str:
     return next((str(value).strip() for value in values if values and value not in (None, "")), "")
 
 
+def _read_multi_subject_sheet(sheet, sheet_name: str) -> tuple[list[Student], str]:
+    """Read one already-loaded actual subject worksheet."""
+    limit = min(sheet.max_column, 100)
+    total_column = next((column for column in range(1, limit) if str(sheet.cell(9, column).value or "").strip().casefold() == "total" and "letter" in str(sheet.cell(9, column + 1).value or "").casefold()), None)
+    if total_column is None and sheet_name == "Health Education ":
+        total_column = 14
+    if total_column is None:
+        raise ProcessingError(f"{sheet_name}: could not locate final Total beside Letter Grade.")
+    teacher_column = next((column for column in range(1, limit + 1) if "teacher" in str(sheet.cell(9, column).value or "").casefold()), None)
+    comment_columns = (teacher_column - 3, teacher_column - 2, teacher_column - 1) if teacher_column and teacher_column > 3 else None
+    students: list[Student] = []
+    blank_streak = 0
+    teacher_names: list[str] = []
+    for row in range(11, sheet.max_row + 1):
+        name = sheet[f"C{row}"].value
+        if not name:
+            blank_streak += 1
+            if students and blank_streak >= 3:
+                break
+            continue
+        blank_streak = 0
+        total = sheet.cell(row, total_column).value
+        if teacher_column:
+            teacher_names.append(str(sheet.cell(row, teacher_column).value or "").strip())
+        comments = tuple(str(sheet.cell(row, column).value or "").strip() or None for column in comment_columns) if comment_columns else (None, None, None)
+        students.append(Student(
+            source_row=row, number=sheet[f"B{row}"].value if isinstance(sheet[f"B{row}"].value, int) else None,
+            english_name=str(name).strip(), khmer_name=str(sheet[f"D{row}"].value or "").strip(),
+            student_id=str(sheet[f"E{row}"].value or "").strip(), sex=str(sheet[f"F{row}"].value or "").strip(),
+            group=str(sheet[f"G{row}"].value or "").strip(), total=float(total) if isinstance(total, (int, float)) else None, comments=comments,
+        ))
+    if not students:
+        raise ProcessingError(f"{sheet_name}: no student rows were found.")
+    return students, _first_nonempty(teacher_names)
+
+
 def read_multi_subject_sheet(workbook_path: Path, sheet_name: str) -> tuple[list[Student], str]:
-    """Read one actual subject worksheet from an all-subject gradebook."""
+    """Compatibility wrapper for callers that need a single subject sheet."""
     workbook = load_workbook(workbook_path, read_only=True, data_only=True)
     try:
-        sheet = workbook[sheet_name]
-        limit = min(sheet.max_column, 100)
-        total_column = next((column for column in range(1, limit) if str(sheet.cell(9, column).value or "").strip().casefold() == "total" and "letter" in str(sheet.cell(9, column + 1).value or "").casefold()), None)
-        if total_column is None and sheet_name == "Health Education ":
-            total_column = 14
-        if total_column is None:
-            raise ProcessingError(f"{sheet_name}: could not locate final Total beside Letter Grade.")
-        teacher_column = next((column for column in range(1, limit + 1) if "teacher" in str(sheet.cell(9, column).value or "").casefold()), None)
-        comment_columns = (teacher_column - 3, teacher_column - 2, teacher_column - 1) if teacher_column and teacher_column > 3 else None
-        students: list[Student] = []
-        blank_streak = 0
-        teacher_names: list[str] = []
-        for row in range(11, sheet.max_row + 1):
-            name = sheet[f"C{row}"].value
-            if not name:
-                blank_streak += 1
-                if students and blank_streak >= 3:
-                    break
-                continue
-            blank_streak = 0
-            total = sheet.cell(row, total_column).value
-            if teacher_column:
-                teacher_names.append(str(sheet.cell(row, teacher_column).value or "").strip())
-            comments = tuple(
-                str(sheet.cell(row, column).value or "").strip() or None
-                for column in comment_columns
-            ) if comment_columns else (None, None, None)
-            students.append(Student(
-                source_row=row,
-                number=sheet[f"B{row}"].value if isinstance(sheet[f"B{row}"].value, int) else None,
-                english_name=str(name).strip(),
-                khmer_name=str(sheet[f"D{row}"].value or "").strip(),
-                student_id=str(sheet[f"E{row}"].value or "").strip(),
-                sex=str(sheet[f"F{row}"].value or "").strip(),
-                group=str(sheet[f"G{row}"].value or "").strip(),
-                total=float(total) if isinstance(total, (int, float)) else None,
-                comments=comments,
-            ))
-        if not students:
-            raise ProcessingError(f"{sheet_name}: no student rows were found.")
-        return students, _first_nonempty(teacher_names)
+        return _read_multi_subject_sheet(workbook[sheet_name], sheet_name)
     finally:
         workbook.close()
 
@@ -329,6 +328,40 @@ def target_identity_columns(quarter_sheet) -> dict[str, str]:
     return columns
 
 
+def comment_identity_columns(comment_sheet) -> dict[str, str]:
+    """Locate Comment Q roster headers and do not rely on broken template links.
+
+    Several approved formats have stale formulas in Comment Q that point at a
+    different quarter or swap ID and Sex.  Writing by the visible row-6 header
+    guarantees comments carry the same identity as the imported quarter.
+    """
+    columns = {
+        "number": "A",
+        "english_name": "B",
+        "khmer_name": "C",
+        "student_id": "D",
+        "sex": "E",
+        "group": "F",
+    }
+    header_fields = {
+        "nº": "number",
+        "no": "number",
+        "number": "number",
+        "fullname": "english_name",
+        "fullnameinkhmer": "khmer_name",
+        "id": "student_id",
+        "sex": "sex",
+        "group": "group",
+    }
+    for column in range(1, min(comment_sheet.max_column, 20) + 1):
+        value = comment_sheet.cell(6, column).value
+        label = "".join(character for character in str(value or "").casefold() if character.isalnum())
+        field = header_fields.get(label)
+        if field:
+            columns[field] = comment_sheet.cell(6, column).column_letter
+    return columns
+
+
 def populate_scoring_template(
     template_path: Path,
     output_path: Path,
@@ -353,6 +386,7 @@ def populate_scoring_template(
         if clear_samples:
             clear_all_quarters(workbook, grade)
         identity_columns = target_identity_columns(quarter_sheet)
+        comment_columns = comment_identity_columns(comment_sheet)
         for index, student in enumerate(roster):
             row = first_target_row + index
             quarter_sheet[f"{identity_columns['number']}{row}"] = student.number or index + 1
@@ -361,6 +395,13 @@ def populate_scoring_template(
             quarter_sheet[f"{identity_columns['sex']}{row}"] = student.sex
             quarter_sheet[f"{identity_columns['student_id']}{row}"] = student.student_id
             quarter_sheet[f"{identity_columns['group']}{row}"] = student.group
+            comment_row = first_comment_row + index
+            comment_sheet[f"{comment_columns['number']}{comment_row}"] = student.number or index + 1
+            comment_sheet[f"{comment_columns['english_name']}{comment_row}"] = student.english_name
+            comment_sheet[f"{comment_columns['khmer_name']}{comment_row}"] = student.khmer_name
+            comment_sheet[f"{comment_columns['student_id']}{comment_row}"] = student.student_id
+            comment_sheet[f"{comment_columns['sex']}{comment_row}"] = student.sex
+            comment_sheet[f"{comment_columns['group']}{comment_row}"] = student.group
 
         transferred_scores = transferred_comments = 0
         for upload in uploads:
@@ -377,8 +418,13 @@ def populate_scoring_template(
                 if upload.mapping.teacher_name_column and upload.teacher_name:
                     comment_sheet[f"{upload.mapping.teacher_name_column}{first_comment_row + index}"] = upload.teacher_name
 
+        # openpyxl preserves formulas but cannot calculate their displayed
+        # values. Ask Excel to recalculate all dependent FinalSem formulas
+        # when the generated workbook is opened.
+        workbook.calculation.calcMode = "auto"
         workbook.calculation.fullCalcOnLoad = True
         workbook.calculation.forceFullCalc = True
+        workbook.calculation.calcOnSave = True
         workbook.save(output_path)
         return transferred_scores, transferred_comments
     finally:
@@ -472,7 +518,19 @@ def report_values(
     return values
 
 
-def fill_merge_fields(template_path: Path, output_path: Path, values: dict[str, str], period: str) -> None:
+def read_docx_template_parts(template_path: Path) -> list[tuple[zipfile.ZipInfo, bytes]]:
+    """Read the report template once for an entire student batch."""
+    with zipfile.ZipFile(template_path) as source:
+        return [(info, source.read(info.filename)) for info in source.infolist()]
+
+
+def fill_merge_fields(
+    template_path: Path,
+    output_path: Path,
+    values: dict[str, str],
+    period: str,
+    template_parts: list[tuple[zipfile.ZipInfo, bytes]] | None = None,
+) -> None:
     """Fill cached merge-field results without serializing/rebuilding Word XML."""
     quarter_names = {"Q1": "First", "Q2": "Second", "Q3": "Third", "Q4": "Fourth"}
     field_pattern = re.compile(
@@ -490,9 +548,10 @@ def fill_merge_fields(template_path: Path, output_path: Path, values: dict[str, 
         result, changed = text_pattern.subn(lambda text: text.group(1) + replacement + text.group(3), match.group("result"), count=1)
         return match.group(1) + (result if changed else match.group("result")) + match.group(4)
 
-    with zipfile.ZipFile(template_path) as source, zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as destination:
-        for info in source.infolist():
-            content = source.read(info.filename)
+    parts = template_parts or read_docx_template_parts(template_path)
+    with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED, compresslevel=1) as destination:
+        for info, original_content in parts:
+            content = original_content
             if info.filename == "word/document.xml":
                 content = field_pattern.sub(replace_field, content)
                 content = content.replace(b">Fourth</w:t>", f">{quarter_names[period]}</w:t>".encode("utf-8"))
@@ -547,11 +606,15 @@ def generate_report_cards(
         raise ProcessingError("The report-card Word template file could not be found.")
     reports_dir = job_dir / "student-report-cards"
     reports_dir.mkdir(exist_ok=True)
+    # The previous implementation repeatedly opened and decompressed the same
+    # Word template once per student. Keep the original archive parts in memory
+    # for this short-lived job instead.
+    template_parts = read_docx_template_parts(template_path)
     for index, student in enumerate(uploads[0].students, start=1):
         stem = f"{index:02d}-{safe_filename(student.english_name)}"
         docx_path = reports_dir / f"{stem}.docx"
         values = report_values(index - 1, uploads, academic_year, len(uploads[0].students), grade)
-        fill_merge_fields(template_path, docx_path, values, period)
+        fill_merge_fields(template_path, docx_path, values, period, template_parts)
     report_format = "PDF"
     conversion_warning = None
     try:
@@ -582,40 +645,37 @@ def build_subject_uploads(path: Path, filename: str, grade: int = 6) -> list[Sub
         normalised_period = period_value.upper().replace("QUARTER", "Q").replace(" ", "")
         period = normalised_period if normalised_period in config.periods else None
         sheet_names = set(workbook.sheetnames)
+        mapping = mapping_by_source.get("".join(c for c in subject_name.casefold() if c.isalnum()))
+        if mapping is not None:
+            if "Scoring System" not in workbook.sheetnames:
+                raise ProcessingError("An uploaded file does not contain a Scoring System sheet.")
+            return [SubjectUpload(
+                filename, subject_name, setting_teacher, mapping, period,
+                _read_subject_students_sheet(workbook["Scoring System"]),
+            )]
+
+        # Multi-subject workbooks: read every detected sheet from this one
+        # already-open ZIP archive. Before this, a 19-subject file was opened
+        # and parsed up to 20 times, which is the main avoidable delay.
+        detected_by_key = {
+            mapping_by_source["".join(c for c in sheet_name.casefold() if c.isalnum())].key: sheet_name
+            for sheet_name in sheet_names
+            if "".join(c for c in sheet_name.casefold() if c.isalnum()) in mapping_by_source
+        }
+        detected = [
+            (detected_by_key[mapping.key], mapping)
+            for mapping in config.subjects
+            if mapping.key in detected_by_key
+        ]
+        if not detected:
+            raise ProcessingError(f"{filename}: Subject is blank in SETTINGS!F23 and no supported subject sheets were found.")
+        results: list[SubjectUpload] = []
+        for sheet_name, subject_mapping in detected:
+            students, sheet_teacher = _read_multi_subject_sheet(workbook[sheet_name], sheet_name)
+            results.append(SubjectUpload(filename, sheet_name, sheet_teacher or setting_teacher, subject_mapping, period, students))
+        return results
     finally:
         workbook.close()
-
-    mapping = mapping_by_source.get("".join(c for c in subject_name.casefold() if c.isalnum()))
-    if mapping is not None:
-        return [SubjectUpload(
-            filename,
-            subject_name,
-            setting_teacher,
-            mapping,
-            period,
-            read_subject_students(path),
-        )]
-
-    # Multi-subject workbooks: detect by sheet name
-    detected_by_key = {
-        mapping_by_source["".join(c for c in sheet_name.casefold() if c.isalnum())].key: sheet_name
-        for sheet_name in sheet_names
-        if "".join(c for c in sheet_name.casefold() if c.isalnum()) in mapping_by_source
-    }
-    # Preserve the approved profile order rather than the arbitrary workbook
-    # sheet order. This also makes all-subject uploads deterministic.
-    detected = [
-        (detected_by_key[mapping.key], mapping)
-        for mapping in config.subjects
-        if mapping.key in detected_by_key
-    ]
-    if not detected:
-        raise ProcessingError(f"{filename}: Subject is blank in SETTINGS!F23 and no supported subject sheets were found.")
-    results: list[SubjectUpload] = []
-    for sheet_name, subject_mapping in detected:
-        students, sheet_teacher = read_multi_subject_sheet(path, sheet_name)
-        results.append(SubjectUpload(filename, sheet_name, sheet_teacher or setting_teacher, subject_mapping, period, students))
-    return results
 
 
 def print_stages(grade: int = 6) -> dict[str, dict[str, Any]]:
@@ -646,6 +706,7 @@ def process_gradebooks(
     print_stage: str = "",
     grade: int = 6,
 ) -> dict[str, Any]:
+    started_at = time.monotonic()
     purge_expired_jobs()
     config = load_grade_config(grade)
     if period not in config.periods:
@@ -715,7 +776,6 @@ def process_gradebooks(
                 uploads_by_subject[subject_upload.mapping.key] = subject_upload
         finally:
             source_path.unlink(missing_ok=True)
-            gc.collect()
 
     scoring_output = job_dir / output_filename(grade)
     try:
@@ -801,6 +861,7 @@ def process_gradebooks(
         "grade_label": config.label,
         "student_count": len(first.students),
         "populated_students": len(first.students),
+        "processing_seconds": round(time.monotonic() - started_at, 1),
         "subjects": [{"name": item.mapping.label, "source_subject": item.subject_name, "source_period": item.source_period} for item in subject_uploads],
         "warnings": warnings,
         "outputs": {
