@@ -7,7 +7,7 @@ from openpyxl import Workbook, load_workbook
 
 from .mapping import MAPPING_BY_KEY
 from .grade_config import load_grade_config
-from .early_years import PROFILES, TERMS, normalize, rosters_match as early_years_rosters_match, student_key, target_term_sheet_name, _first_data_row_xlsx, target_outcome_columns, input_score_last_column, subjects_named_by_file, GRADE_PATTERN, XlsxBookAdapter
+from .early_years import PROFILES, TERMS, normalize, rosters_match as early_years_rosters_match, student_key, target_term_sheet_name, _first_data_row_xlsx, target_outcome_columns, outcome_header_candidates, input_score_last_column, GRADE_PATTERN, XlsxBookAdapter
 from .services import (
     Student,
     SubjectUpload,
@@ -74,6 +74,18 @@ class BatchImportTests(SimpleTestCase):
         self.assertEqual(outcomes["uniqueoutcome"], [7])
         self.assertEqual(outcomes["repeatedoutcome"], [8, 9])
 
+    def test_early_years_outcome_fallback_checks_all_header_levels(self):
+        """K2 Math has a Khmer subject label below two Math outcome headers."""
+        header = (
+            "",
+            "identifyingthelengthofthingslongerandshorter",
+            "khvaluesedu",
+        )
+        self.assertEqual(
+            outcome_header_candidates(header),
+            ["khvaluesedu", "identifyingthelengthofthingslongerandshorter"],
+        )
+
     def test_early_years_detects_visible_k_grade_title(self):
         self.assertEqual(GRADE_PATTERN.search("Progress list for K2-A").group(1).upper(), "K2")
 
@@ -92,11 +104,6 @@ class BatchImportTests(SimpleTestCase):
         sheet["H9"] = "English"
         self.assertEqual(input_score_last_column(sheet), 7)
 
-    def test_early_years_uses_subject_named_in_teacher_file(self):
-        profile = PROFILES["K2"]
-        self.assertEqual(subjects_named_by_file("K2_Term1_English.xls", profile), ["English"])
-        self.assertEqual(subjects_named_by_file("K2_Term1_Khmer.xls", profile), ["Khmer"])
-        self.assertEqual(subjects_named_by_file("K2 Term 1 complete.xls", profile), [])
 
     def test_grade_group_templates_and_verified_score_columns_exist(self):
         """G1-3, G4-6, and G7-9 use separate approved score formats."""

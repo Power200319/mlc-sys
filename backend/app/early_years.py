@@ -223,18 +223,6 @@ def source_grade(book: xlrd.book.Book) -> str | None:
     return None
 
 
-def subjects_named_by_file(filename: str, profile: EarlyYearsProfile) -> list[str]:
-    """Respect a teacher's explicit `_English` / `_Khmer` file naming.
-
-    E-Progress copies contain every subject tab, often with old values in tabs
-    the teacher did not intend to submit. A recognized filename limits import
-    to that one subject; generic filenames retain all populated subjects.
-    """
-    normalized_name = normalize(Path(filename).stem)
-    matches = [subject for subject in profile.subjects if normalize(subject) in normalized_name]
-    return matches[:1]
-
-
 def student_key(name: object, student_id: object) -> str:
     """Use ID when supplied; name is the cautious fallback for legacy files."""
     normalized_id = str(student_id or "").strip().casefold()
@@ -315,6 +303,19 @@ def target_outcome_columns(sheet) -> dict[str, list[int]]:
         if outcome:
             grouped.setdefault(outcome, []).append(column)
     return grouped
+
+
+def outcome_header_candidates(header: tuple[str, str, str]) -> list[str]:
+    """Return meaningful header levels from most to least specific.
+
+    Some supplied E-Progress workbooks contain a second subject label in the
+    third header row (for example ``KH-Values Edu.`` below a Mathematics
+    outcome).  That label is not part of the score-system layout.  Looking
+    only at the right-most header level would leave the actual Mathematics
+    outcome unmatched.  Each candidate is still required to identify exactly
+    one destination column before a value is written.
+    """
+    return list(dict.fromkeys(label for label in reversed(header) if label))
 
 
 def target_identity_columns(sheet) -> dict[str, int]:
@@ -401,12 +402,13 @@ def populate_term(
             for header, value in outcomes.items():
                 destination = targets.get(header, [])
                 used_fallback = False
-                source_outcome = next((label for label in reversed(header) if label), "")
-                if len(destination) != 1 and source_outcome:
-                    candidates = target_outcomes.get(source_outcome, [])
-                    if len(candidates) == 1:
-                        destination = candidates
-                        used_fallback = True
+                if len(destination) != 1:
+                    for source_outcome in outcome_header_candidates(header):
+                        candidates = target_outcomes.get(source_outcome, [])
+                        if len(candidates) == 1:
+                            destination = candidates
+                            used_fallback = True
+                            break
                 if len(destination) == 1:
                     target.cell(target_row, destination[0]).value = value
                     transferred += 1
@@ -468,10 +470,10 @@ def process_early_years(uploads, grade: str, term: str) -> dict[str, Any]:
                         f"{upload.name}: student roster does not match the first selected E-Progress file. "
                         "Use files for the same class; matching uses ID when present, otherwise name and order."
                     )
-                named_subjects = subjects_named_by_file(upload.name, profile)
-                detected = [subject for subject in named_subjects if subject in source_book.sheet_names()] if named_subjects else [
-                    subject for subject in profile.subjects if subject in source_book.sheet_names()
-                ]
+                # Each E-Progress copy has all subject tabs. Import every tab
+                # that actually contains outcome values. Empty tabs do not
+                # replace data imported from another teacher's file.
+                detected = [subject for subject in profile.subjects if subject in source_book.sheet_names()]
                 if not detected:
                     warnings.append(f"{upload.name}: no expected {grade} subject sheet was found; file was skipped.")
                     continue
@@ -518,7 +520,7 @@ def process_early_years(uploads, grade: str, term: str) -> dict[str, Any]:
         "warnings": [
             "Early Years is a separate K1-K3 workflow. No E-Gradebook data or templates were used.",
             "The approved legacy .xls Score System was copied and converted to .xlsx; the original template remains unchanged.",
-            "Only outcome columns whose three-row header matched exactly were imported. Unmatched layout fields were left blank.",
+            "Outcome columns were imported only when the three-row header matched exactly or one learning-outcome header identified a unique destination. Unmatched fields were left blank.",
             f"Imported subjects: {', '.join(subject for subject in profile.subjects if subject in subject_data)}.",
             *warnings,
         ],
