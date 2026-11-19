@@ -7,7 +7,7 @@ from openpyxl import Workbook, load_workbook
 
 from .mapping import MAPPING_BY_KEY
 from .grade_config import load_grade_config
-from .early_years import PROFILES, TERMS, normalize
+from .early_years import PROFILES, TERMS, normalize, rosters_match as early_years_rosters_match, student_key, target_term_sheet_name, _first_data_row_xlsx, target_outcome_columns, input_score_last_column, subjects_named_by_file, GRADE_PATTERN, XlsxBookAdapter
 from .services import (
     Student,
     SubjectUpload,
@@ -36,6 +36,67 @@ class BatchImportTests(SimpleTestCase):
         response = Client().get("/api/early-years/profiles/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual([item["value"] for item in response.json()["profiles"]], ["K1", "K2", "K3"])
+
+    @override_settings(SECURE_SSL_REDIRECT=False)
+    def test_early_years_process_accepts_a_multi_file_field(self):
+        response = Client(enforce_csrf_checks=True).post("/api/early-years/process/", {"grade": "K1", "term": "T1"})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "Choose one or more legacy .xls E-Progress workbooks.")
+
+    def test_early_years_multi_file_roster_uses_id_then_name(self):
+        first = [{"Full Name": "Same Name", "ID": "1001"}]
+        same_id = [{"Full Name": "Different spelling", "ID": "1001"}]
+        name_fallback = [{"Full Name": "Same Name", "ID": ""}]
+        self.assertTrue(early_years_rosters_match(first, same_id))
+        self.assertTrue(early_years_rosters_match(first, name_fallback))
+        self.assertEqual(student_key("Same Name", "1001"), "id:1001")
+
+    def test_early_years_resolves_legacy_term_score_sheet_names(self):
+        workbook = Workbook()
+        workbook.active.title = "Term 1 Score"
+        workbook.create_sheet("Term 2 score")
+        self.assertEqual(target_term_sheet_name(workbook, "T1"), "Term 1 Score")
+        self.assertEqual(target_term_sheet_name(workbook, "T2"), "Term 2 score")
+
+    def test_early_years_data_start_skips_merged_legacy_headers_after_clear(self):
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.merge_cells("A9:F12")
+        self.assertEqual(_first_data_row_xlsx(sheet), 13)
+
+    def test_early_years_outcome_fallback_requires_one_unique_destination(self):
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet["G11"] = "Unique Outcome"
+        sheet["H11"] = "Repeated Outcome"
+        sheet["I11"] = "Repeated Outcome"
+        outcomes = target_outcome_columns(sheet)
+        self.assertEqual(outcomes["uniqueoutcome"], [7])
+        self.assertEqual(outcomes["repeatedoutcome"], [8, 9])
+
+    def test_early_years_detects_visible_k_grade_title(self):
+        self.assertEqual(GRADE_PATTERN.search("Progress list for K2-A").group(1).upper(), "K2")
+
+    def test_early_years_xlsx_adapter_preserves_legacy_row_column_coordinates(self):
+        workbook = Workbook()
+        workbook.active.title = "English"
+        workbook["English"]["B12"] = "Student One"
+        adapter = XlsxBookAdapter(workbook)
+        self.assertEqual(adapter.sheet_by_name("English").cell_value(11, 1), "Student One")
+        adapter.close()
+
+    def test_early_years_uses_the_first_score_area_before_duplicate_english_headers(self):
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet["G9"] = "English"
+        sheet["H9"] = "English"
+        self.assertEqual(input_score_last_column(sheet), 7)
+
+    def test_early_years_uses_subject_named_in_teacher_file(self):
+        profile = PROFILES["K2"]
+        self.assertEqual(subjects_named_by_file("K2_Term1_English.xls", profile), ["English"])
+        self.assertEqual(subjects_named_by_file("K2_Term1_Khmer.xls", profile), ["Khmer"])
+        self.assertEqual(subjects_named_by_file("K2 Term 1 complete.xls", profile), [])
 
     def test_grade_group_templates_and_verified_score_columns_exist(self):
         """G1-3, G4-6, and G7-9 use separate approved score formats."""

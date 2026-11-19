@@ -1,10 +1,14 @@
 from django.http import HttpResponse, JsonResponse
+from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
+import logging
 
 from .grade_config import get_available_grades, get_grade_label
 from .early_years import consume_early_years_output, early_years_profiles, process_early_years as process_early_years_workbook
 from .services import ProcessingError, consume_output, process_gradebooks
+
+logger = logging.getLogger(__name__)
 
 
 @require_GET
@@ -32,16 +36,20 @@ def early_years_profiles_view(request):
 @csrf_exempt
 @require_POST
 def process_early_years(request):
-    upload = request.FILES.get("e_progress")
+    uploads = request.FILES.getlist("e_progress")
     try:
         return JsonResponse(
-            process_early_years_workbook(upload, request.POST.get("grade", ""), request.POST.get("term", "")),
+            process_early_years_workbook(uploads, request.POST.get("grade", ""), request.POST.get("term", "")),
             status=201,
         )
     except ProcessingError as error:
         return JsonResponse({"error": str(error)}, status=400)
-    except Exception:
-        return JsonResponse({"error": "Early Years processing failed unexpectedly. No output has been marked successful."}, status=500)
+    except Exception as error:
+        logger.exception("Early Years processing failed")
+        message = "Early Years processing failed unexpectedly. Check the backend terminal log."
+        if settings.DEBUG:
+            message = f"Early Years processing failed: {type(error).__name__}: {error}"
+        return JsonResponse({"error": message}, status=500)
 
 
 @csrf_exempt

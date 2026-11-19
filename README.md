@@ -27,11 +27,12 @@ E-Progress files. It does not read, modify, or share templates with the G1-G9
 E-Gradebook workflow.
 
 1. Select K1, K2, or K3 and Term 1-4.
-2. Upload one legacy `.xls` E-Progress workbook.
+2. Upload one or more legacy `.xls` E-Progress workbooks. You can add a
+   separate English, Khmer, Math, Science, or CP file for the same class and term.
 3. Download a new `.xlsx` copy of the matching K1/K2/K3 Score System.
 
-The service reads the `Student List` roster (or a populated subject roster when
-the list has not been filled), then transfers only outcome values whose
+The service reads and verifies each `Student List` roster (or a populated
+subject roster when the list has not been filled), then transfers only outcome values whose
 three-row headers exactly match the selected Term sheet. K1 expects English,
 Khmer, and CP; K2/K3 also expect Math and Science. Missing sheets and unmatched
 outcomes are reported and left blank rather than guessed.
