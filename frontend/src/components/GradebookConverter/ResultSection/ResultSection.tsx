@@ -4,9 +4,11 @@ import './ResultSection.css'
 
 export interface ResultSectionProps {
   result: Result
+  onGenerateReports?: () => void
+  generatingReports?: boolean
 }
 
-export const ResultSection = ({ result }: ResultSectionProps) => {
+export const ResultSection = ({ result, onGenerateReports, generatingReports = false }: ResultSectionProps) => {
   const scoringOutput = result.outputs.scoring
   const reportOutput = result.outputs.report_cards
   const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
@@ -98,7 +100,10 @@ export const ResultSection = ({ result }: ResultSectionProps) => {
                   <path d="M8 5V9M8 11H8.01" />
                 </svg>
               </span>
-              <span>Report Cards unavailable: {reportOutput.reason}</span>
+              <span>{reportOutput.reason}</span>
+              {onGenerateReports && <button className="btn btn-primary btn-sm" type="button" onClick={onGenerateReports} disabled={generatingReports}>
+                {generatingReports ? 'Generating Student Cards…' : 'Generate Student Cards'}
+              </button>}
             </div>
           )}
         </CardBody>

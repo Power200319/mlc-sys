@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 import zipfile
+import json
 import time
 import os
 from copy import copy
@@ -699,6 +700,54 @@ def reports_filename(grade: int = 6) -> str:
     return f"Grade-{config.label.replace(' ', '')}-Student-Report-Cards.zip"
 
 
+def save_report_context(job_dir: Path, uploads: list[SubjectUpload], academic_year: str, period: str, grade: int) -> None:
+    """Keep only the short-lived information required after scoring review."""
+    payload = {
+        "academic_year": academic_year,
+        "period": period,
+        "grade": grade,
+        "subjects": [
+            {"key": upload.mapping.key, "label": upload.mapping.label, "source_subject": upload.subject_name,
+             "students": [asdict(student) for student in upload.students]}
+            for upload in uploads
+        ],
+    }
+    (job_dir / "report-context.json").write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+
+def generate_reports_for_job(job_id: str, grade: int) -> dict[str, Any]:
+    """Generate report cards only after the teacher has reviewed scoring."""
+    if not re.fullmatch(r"[0-9a-f]{32}", job_id or ""):
+        raise ProcessingError("Scoring review session was not found.")
+    job_dir = Path(settings.MLCIS_JOB_DIR) / job_id
+    context_path = job_dir / "report-context.json"
+    if not context_path.exists() or not output_path(job_id, "scoring", grade).exists():
+        raise ProcessingError("Scoring review session has expired. Import the gradebooks again.")
+    context = json.loads(context_path.read_text(encoding="utf-8"))
+    if context.get("grade") != grade:
+        raise ProcessingError("The selected grade does not match this scoring review session.")
+    config = load_grade_config(grade)
+    uploads = [
+        SubjectUpload(
+            "", item["source_subject"], "", config.mapping_by_key[item["key"]], context["period"],
+            [Student(**{**student, "comments": tuple(student["comments"])}) for student in item["students"]],
+        )
+        for item in context["subjects"]
+    ]
+    stage = print_stages(grade).get(next((key for key, value in print_stages(grade).items() if value["period"] == context["period"]), ""))
+    if not stage or not stage["report"]:
+        raise ProcessingError("This print package uses the Final Semester sheet after the manual exam; student cards are not generated here.")
+    template = configured_templates(grade)[stage["template"]]
+    if template is None:
+        raise ProcessingError(f"{config.label} has no verified report-card template yet.")
+    archive, count, report_format, warning = generate_report_cards(template, job_dir, uploads, context["academic_year"], context["period"], grade)
+    return {
+        "report_cards": {"available": True, "filename": archive.name, "count": count, "format": report_format,
+                         "download": f"/api/download/{job_id}/report_cards/"},
+        "warnings": [warning] if warning else [],
+    }
+
+
 def process_gradebooks(
     uploads,
     period: str,
@@ -818,40 +867,13 @@ def process_gradebooks(
             + ". Open those source sheets in Excel, recalculate, save, then upload again."
         )
     warnings.extend(replacements)
-    try:
-        if stage and not stage["report"]:
-            exam_label = "Exam 1" if period == "Q2" else "Exam 2"
-            warnings.append(
-                f"Enter {exam_label} manually in the downloaded scoring workbook, then recalculate and save it in Excel. "
-                f"Print the existing {'FinalSem1 reportcard' if period == 'Q2' else 'FinalSem2'} sheet from that workbook."
-            )
-            raise ProcessingError("Semester PDFs are not generated before the manual exam is entered.")
-        template_key = stage["template"] if stage else "quarter_report"
-        report_template = templates[template_key]
-        if report_template is None:
-            raise ProcessingError(
-                f"{config.label} has no verified report-card template yet. The scoring workbook is available to download."
-            )
-        reports_archive, report_count, report_format, conversion_warning = generate_report_cards(
-            report_template,
-            job_dir,
-            subject_uploads,
-            academic_year,
-            period,
-            grade,
-        )
-        report_output = {
-            "available": True,
-            "filename": reports_archive.name,
-            "count": report_count,
-            "format": report_format,
-            "download": f"/api/download/{job_id}/report_cards/",
-        }
-        if conversion_warning:
-            warnings.append(conversion_warning)
-    except (ProcessingError, OSError, subprocess.TimeoutExpired) as error:
-        warnings.append(str(error))
-        report_output = {"available": False, "reason": "Student PDF reports could not be created."}
+    save_report_context(job_dir, subject_uploads, academic_year, period, grade)
+    if stage and not stage["report"]:
+        exam_label = "Exam 1" if period == "Q2" else "Exam 2"
+        report_reason = f"Enter {exam_label} manually in the downloaded scoring workbook, then recalculate and print the Final Semester sheet."
+    else:
+        report_reason = "Review and download the scoring workbook first, then click Generate Student Cards."
+    report_output = {"available": False, "reason": report_reason}
     return {
         "job_id": job_id,
         "print_stage": print_stage or None,
@@ -891,15 +913,13 @@ def output_path(job_id: str, kind: str, grade: int = 6) -> Path:
 
 
 def consume_output(job_id: str, kind: str, grade: int = 6) -> tuple[bytes, str]:
-    """Read a one-time download into memory, then erase its server copy."""
+    """Keep scoring temporarily for review; erase cards and job after delivery."""
     purge_expired_jobs()
     path = output_path(job_id, kind, grade)
     content = path.read_bytes()
     filename = path.name
-    path.unlink(missing_ok=True)
     if kind == "report_cards":
+        path.unlink(missing_ok=True)
         shutil.rmtree(path.parent / "student-report-cards", ignore_errors=True)
-    job_dir = path.parent
-    if not any(job_dir.iterdir()):
-        job_dir.rmdir()
+        shutil.rmtree(path.parent, ignore_errors=True)
     return content, filename

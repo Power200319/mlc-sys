@@ -6,7 +6,7 @@ import logging
 
 from .grade_config import get_available_grades, get_grade_label
 from .early_years import consume_early_years_output, early_years_profiles, process_early_years as process_early_years_workbook
-from .services import ProcessingError, consume_output, process_gradebooks
+from .services import ProcessingError, consume_output, generate_reports_for_job, process_gradebooks
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +77,22 @@ def process(request):
         return JsonResponse({"error": str(error)}, status=400)
     except Exception:
         return JsonResponse({"error": "Processing failed unexpectedly. No output has been marked successful."}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def generate_reports(request):
+    try:
+        grade = int(request.POST.get("grade", "6"))
+    except (TypeError, ValueError):
+        grade = 6
+    try:
+        return JsonResponse(generate_reports_for_job(request.POST.get("job_id", ""), grade), status=201)
+    except ProcessingError as error:
+        return JsonResponse({"error": str(error)}, status=400)
+    except Exception:
+        logger.exception("Report generation failed")
+        return JsonResponse({"error": "Student card generation failed unexpectedly."}, status=500)
 
 
 @require_GET

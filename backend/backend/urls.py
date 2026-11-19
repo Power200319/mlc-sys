@@ -27,5 +27,6 @@ urlpatterns = [
     path('api/early-years/process/', views.process_early_years, name='early-years-process'),
     path('api/early-years/download/<str:job_id>/', views.download_early_years, name='early-years-download'),
     path('api/process/', views.process, name='process'),
+    path('api/generate-reports/', views.generate_reports, name='generate-reports'),
     path('api/download/<str:job_id>/<str:kind>/', views.download, name='download'),
 ]

@@ -19,6 +19,7 @@ export interface GradeOption {
 }
 
 export interface Result {
+  job_id: string
   period: string
   grade: number
   grade_label: string

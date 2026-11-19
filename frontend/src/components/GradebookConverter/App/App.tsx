@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import type { Result, GradeOption } from '../../../types'
+import type { Result, GradeOption, Output } from '../../../types'
 import { printPackages } from '../../../utils/helpers'
 import { useFileSelection, useProcessing } from '../../../hooks'
 import { Header } from '../Header'
@@ -20,6 +20,7 @@ const App = () => {
   const [grade, setGrade] = useState(6)
   const [grades, setGrades] = useState<GradeOption[]>([])
   const [scoringWorkbook, setScoringWorkbook] = useState<File | null>(null)
+  const [generatingReports, setGeneratingReports] = useState(false)
 
   const { files, addFiles, removeFile, clearAllFiles } = useFileSelection()
   const { processing, progress, error, result, startProcessing, updateProgress, finishProcessing, setError } =
@@ -82,7 +83,7 @@ const App = () => {
       updateProgress('Uploading & validating…', 30)
       const apiBase = import.meta.env.VITE_API_BASE_URL || ''
       processingNotice = window.setTimeout(() => {
-        updateProgress('Writing scoring workbook and creating student PDF reports…', 70)
+        updateProgress('Writing scoring workbook…', 70)
       }, 1200)
       const response = await fetch(`${apiBase}/api/process/`, { method: 'POST', body: data })
       window.clearTimeout(processingNotice)
@@ -98,6 +99,30 @@ const App = () => {
       finishProcessing(false, requestError instanceof Error ? requestError : new Error('An unexpected error occurred.'))
     } finally {
       if (processingNotice !== undefined) window.clearTimeout(processingNotice)
+    }
+  }
+
+  const generateReports = async () => {
+    if (!result) return
+    setGeneratingReports(true)
+    setError('')
+    const data = new FormData()
+    data.append('job_id', result.job_id)
+    data.append('grade', String(result.grade))
+    try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || ''
+      const response = await fetch(`${apiBase}/api/generate-reports/`, { method: 'POST', body: data })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || 'Student card generation failed.')
+      finishProcessing(true, {
+        ...result,
+        warnings: [...result.warnings, ...(payload.warnings || [])],
+        outputs: { ...result.outputs, report_cards: payload.report_cards as Output },
+      })
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Student card generation failed.')
+    } finally {
+      setGeneratingReports(false)
     }
   }
 
@@ -158,7 +183,7 @@ const App = () => {
               label={selectedPackage.label}
             />
 
-            {result && <ResultSection result={result} />}
+            {result && <ResultSection result={result} onGenerateReports={selectedPackage.value === 'P1' || selectedPackage.value === 'P3' ? generateReports : undefined} generatingReports={generatingReports} />}
           </section>
         </div>
       </main>

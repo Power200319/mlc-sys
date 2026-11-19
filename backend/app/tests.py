@@ -339,7 +339,7 @@ class BatchImportTests(SimpleTestCase):
             self.assertEqual(result["Comment Q2"]["G9"].value, "Q2 effort")
             result.close()
 
-    def test_download_consumes_output_and_removes_server_copy(self):
+    def test_scoring_download_keeps_short_lived_review_session(self):
         with TemporaryDirectory() as directory:
             jobs_dir = Path(directory) / "jobs"
             job_dir = jobs_dir / "safejob"
@@ -350,5 +350,5 @@ class BatchImportTests(SimpleTestCase):
                 content, filename = consume_output("safejob", "scoring")
             self.assertEqual(content, b"private student data")
             self.assertEqual(filename, workbook.name)
-            self.assertFalse(workbook.exists())
-            self.assertFalse(job_dir.exists())
+            self.assertTrue(workbook.exists())
+            self.assertTrue(job_dir.exists())
