@@ -50,12 +50,13 @@ merge fields must be converted and verified before generating reports.
 2. Add one or more subject E-gradebook `.xlsx` files. You may add files repeatedly before clicking Import.
 3. The application detects each file's Subject from `SETTINGS!F23` and sends its `Scoring System!AM` cached Total into the correct selected-quarter subject column.
 
-After a successful import, the application creates one PDF report card per
-student from `1- F- Quarter Report Card Grade G4-6 - MLCIS (2).docx`. The
-included Render Docker configuration installs LibreOffice Writer, so deployed
-Render jobs produce a PDF ZIP. The report uses only the imported scores and
-student identity. Unavailable subjects and attendance fields are left blank
-rather than retaining template sample data.
+After a successful import, download and review the scoring workbook first.
+For Print 1 and Print 3, click **Generate Student Cards** to create one
+report per student from `1- F- Quarter Report Card Grade G4-6 - MLCIS (2).docx`.
+The included Render Docker configuration installs LibreOffice Writer, so
+deployed Render jobs produce a PDF ZIP. The report uses only the imported
+scores and student identity. Unavailable subjects and attendance fields are
+left blank rather than retaining template sample data.
 
 For example, Q1 plus English and Khmer Dictation files imports their Totals into `Q1!P` and `Q1!G` respectively. The first upload supplies the roster; each additional upload must have the identical roster, matched by student ID when present or exact English name otherwise.
 

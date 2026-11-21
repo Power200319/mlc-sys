@@ -203,4 +203,7 @@ MLCIS_REPORT_TEMPLATE = os.environ.get("MLCIS_REPORT_TEMPLATE", MLCIS_QUARTER_RE
 MLCIS_JOB_DIR = BASE_DIR / "runtime" / "jobs"
 # Input uploads are erased as soon as processing finishes. Download outputs are
 # available only briefly and are removed after download or this time limit.
-MLCIS_JOB_RETENTION_SECONDS = int(os.environ.get("MLCIS_JOB_RETENTION_SECONDS", "600"))
+# A teacher needs enough time to download and review the scoring workbook
+# before requesting student cards. Jobs remain temporary and are still erased
+# after download, expiry, or a server restart.
+MLCIS_JOB_RETENTION_SECONDS = int(os.environ.get("MLCIS_JOB_RETENTION_SECONDS", "3600"))

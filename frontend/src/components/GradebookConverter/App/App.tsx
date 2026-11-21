@@ -23,7 +23,7 @@ const App = () => {
   const [generatingReports, setGeneratingReports] = useState(false)
 
   const { files, addFiles, removeFile, clearAllFiles } = useFileSelection()
-  const { processing, progress, error, result, startProcessing, updateProgress, finishProcessing, setError } =
+  const { processing, progress, error, result, startProcessing, updateProgress, finishProcessing, setError, reset } =
     useProcessing()
 
   const selectedPackage = printPackages.find((p) => p.value === printStage) || printPackages[0]
@@ -58,6 +58,13 @@ const App = () => {
     setScoringWorkbook(file)
     setError('')
   }, [setError])
+
+  const handlePrintStageChange = useCallback((stage: string) => {
+    // A result belongs only to the package that created it. Keeping it visible
+    // after changing packages could offer a card action for the wrong period.
+    setPrintStage(stage)
+    reset()
+  }, [reset])
 
   const processGradebooks = async () => {
     if (!files.length) {
@@ -141,7 +148,7 @@ const App = () => {
               grades={grades}
               disabled={processing}
             />
-            <PackageSelector selectedValue={printStage} onChange={setPrintStage} disabled={processing} />
+            <PackageSelector selectedValue={printStage} onChange={handlePrintStageChange} disabled={processing} />
 
             <div className="sidebar-footer">
               <p className="sidebar-hint">Select grade and print package to begin</p>
@@ -183,7 +190,7 @@ const App = () => {
               label={selectedPackage.label}
             />
 
-            {result && <ResultSection result={result} onGenerateReports={selectedPackage.value === 'P1' || selectedPackage.value === 'P3' ? generateReports : undefined} generatingReports={generatingReports} />}
+            {result && <ResultSection result={result} onGenerateReports={result.print_stage === 'P1' || result.print_stage === 'P3' ? generateReports : undefined} generatingReports={generatingReports} />}
           </section>
         </div>
       </main>
