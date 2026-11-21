@@ -1,0 +1,19 @@
+# Python virtual environments
+.venv/
+venv/
+venv312/
+backend/.venv/
+backend/venv/
+backend/venv312/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment variables
+.env
+.env.*
+
+# Node dependencies
+node_modules/
