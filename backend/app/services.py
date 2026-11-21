@@ -12,6 +12,7 @@ import zipfile
 import json
 import time
 import os
+import gc
 from copy import copy
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -561,32 +562,45 @@ def fill_merge_fields(
 
 
 def convert_word_reports_to_pdf(reports_dir: Path) -> None:
-    """Convert reports with the converter available on the current server."""
+    """Convert one report at a time to keep the worker's peak memory bounded."""
     libreoffice = shutil.which("libreoffice") or shutil.which("soffice")
     if libreoffice:
-        profile_dir = Path(tempfile.mkdtemp(prefix="mlcis-libreoffice-"))
-        command = [
-            libreoffice,
-            f"-env:UserInstallation=file://{profile_dir.as_posix()}",
-            "--headless",
-            "--convert-to", "pdf:writer_pdf_Export",
-            "--outdir", str(reports_dir),
-            *[str(document) for document in reports_dir.glob("*.docx")],
-        ]
+        documents = sorted(reports_dir.glob("*.docx"))
+        if not documents:
+            raise ProcessingError("No student report documents were created.")
+        # LibreOffice can retain every document supplied on one command line.
+        # A separate temporary profile and process for each student has a much
+        # lower peak RAM requirement on Render's small instances.
+        for document in documents:
+            profile_dir = Path(tempfile.mkdtemp(prefix="mlcis-libreoffice-"))
+            command = [
+                libreoffice,
+                f"-env:UserInstallation=file://{profile_dir.as_uri()}",
+                "--headless",
+                "--nologo",
+                "--nofirststartwizard",
+                "--norestore",
+                "--convert-to", "pdf:writer_pdf_Export",
+                "--outdir", str(reports_dir),
+                str(document),
+            ]
+            try:
+                completed = subprocess.run(command, capture_output=True, text=True, timeout=60)
+            finally:
+                shutil.rmtree(profile_dir, ignore_errors=True)
+            if completed.returncode != 0 or not document.with_suffix(".pdf").exists():
+                detail = (completed.stderr or completed.stdout or "LibreOffice could not export the PDF.").strip()
+                raise ProcessingError(f"PDF export failed for {document.name}: {detail[:260]}")
     elif os.name == "nt":
         script = Path(__file__).with_name("word_to_pdf.ps1")
         command = ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script), str(reports_dir)]
+        completed = subprocess.run(command, capture_output=True, text=True, timeout=180)
     else:
         raise ProcessingError(
             "PDF conversion is unavailable on this server. Student report cards are provided as a DOCX ZIP instead."
         )
-    try:
-        completed = subprocess.run(command, capture_output=True, text=True, timeout=180)
-    finally:
-        if libreoffice:
-            shutil.rmtree(profile_dir, ignore_errors=True)
     expected = list(reports_dir.glob("*.docx"))
-    if completed.returncode != 0 or any(not document.with_suffix(".pdf").exists() for document in expected):
+    if not libreoffice and (completed.returncode != 0 or any(not document.with_suffix(".pdf").exists() for document in expected)):
         detail = (completed.stderr or completed.stdout or "Microsoft Word could not export the PDF.").strip()
         raise ProcessingError(f"PDF export failed: {detail[:300]}")
 
@@ -616,6 +630,11 @@ def generate_report_cards(
         docx_path = reports_dir / f"{stem}.docx"
         values = report_values(index - 1, uploads, academic_year, len(uploads[0].students), grade)
         fill_merge_fields(template_path, docx_path, values, period, template_parts)
+    # Generated DOCX files are now on disk. Releasing the cached template
+    # parts before starting LibreOffice lowers concurrent Python + Office RAM.
+    template_parts.clear()
+    del template_parts
+    gc.collect()
     report_format = "PDF"
     conversion_warning = None
     try:

@@ -19,7 +19,9 @@ services:
           name: mlcis-db
           property: connectionString
       - key: MLCIS_JOB_RETENTION_SECONDS
-        value: "600"
+        value: "3600"
+      - key: GUNICORN_MAX_REQUESTS
+        value: "5"
 
 databases:
   - name: mlcis-db

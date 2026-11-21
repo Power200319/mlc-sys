@@ -2,6 +2,7 @@ FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    MALLOC_ARENA_MAX=2 \
     HOME=/tmp
 
 # LibreOffice Writer is required for DOCX-to-PDF conversion on Render. Noto
@@ -22,4 +23,4 @@ RUN useradd --create-home --uid 10001 gradebook \
     && chown -R gradebook:gradebook /app
 USER gradebook
 
-CMD gunicorn backend.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 1 --timeout 240
+CMD gunicorn backend.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 1 --timeout 360 --max-requests ${GUNICORN_MAX_REQUESTS:-5} --max-requests-jitter 1
