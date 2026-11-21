@@ -575,7 +575,10 @@ def convert_word_reports_to_pdf(reports_dir: Path) -> None:
             profile_dir = Path(tempfile.mkdtemp(prefix="mlcis-libreoffice-"))
             command = [
                 libreoffice,
-                f"-env:UserInstallation=file://{profile_dir.as_uri()}",
+                # ``Path.as_uri()`` already returns file:///tmp/... . Adding
+                # another file:// prefix produces an invalid profile URL and
+                # makes LibreOffice hang until the subprocess times out.
+                f"-env:UserInstallation={profile_dir.as_uri()}",
                 "--headless",
                 "--nologo",
                 "--nofirststartwizard",
@@ -585,7 +588,11 @@ def convert_word_reports_to_pdf(reports_dir: Path) -> None:
                 str(document),
             ]
             try:
-                completed = subprocess.run(command, capture_output=True, text=True, timeout=60)
+                completed = subprocess.run(command, capture_output=True, text=True, timeout=90)
+            except subprocess.TimeoutExpired as error:
+                raise ProcessingError(
+                    f"PDF export timed out for {document.name}. Please try generating the student cards again."
+                ) from error
             finally:
                 shutil.rmtree(profile_dir, ignore_errors=True)
             if completed.returncode != 0 or not document.with_suffix(".pdf").exists():
